@@ -200,8 +200,21 @@ public final class TerminalSessionManager: ObservableObject, @unchecked Sendable
         let session = getOrCreateSession(for: repositoryId, name: name, localPath: localPath)
         openPanel(for: repositoryId, name: name, localPath: localPath)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            session.sendCommand(command)
+        let fileManager = FileManager.default
+        let home = fileManager.homeDirectoryForCurrentUser.path
+        let targetPath = localPath ?? session.workingDirectory
+        let resolved = targetPath.replacingOccurrences(of: "~", with: home)
+        let escapedDir = resolved.replacingOccurrences(of: "'", with: "'\\''")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            let fullCommand: String
+            if fileManager.fileExists(atPath: resolved) {
+                fullCommand = "cd '\(escapedDir)' && \(command)"
+            } else {
+                fullCommand = command
+            }
+            session.sendCommand(fullCommand)
+            session.terminalView.window?.makeFirstResponder(session.terminalView)
         }
     }
 
