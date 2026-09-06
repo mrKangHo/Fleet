@@ -112,7 +112,7 @@ public final class TerminalExecutionService: TerminalExecutionServiceProtocol, S
 
     private func resolveTerminalAppName(for terminalApp: AppSettings.TerminalApp) -> String {
         switch terminalApp {
-        case .terminal:
+        case .embedded, .terminal:
             return "Terminal"
         case .iTerm:
             if NSWorkspace.shared.urlForApplication(withBundleIdentifier: terminalApp.bundleIdentifier) != nil {

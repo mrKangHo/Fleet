@@ -6,6 +6,11 @@ options:
   xcodeVersion: "16.0"
   createIntermediateGroups: true
 
+packages:
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm.git
+    from: 1.0.0
+
 settings:
   base:
     MACOSX_DEPLOYMENT_TARGET: "14.0"
@@ -20,6 +25,8 @@ targets:
     deploymentTarget: "14.0"
     sources:
       - path: Sources/WorkManager
+    dependencies:
+      - package: SwiftTerm
     settings:
       base:
         PRODUCT_NAME: WorkManager

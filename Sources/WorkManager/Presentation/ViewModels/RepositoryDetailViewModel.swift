@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 public final class RepositoryDetailViewModel: ObservableObject {
-    private let environment: AppEnvironment
+    public let environment: AppEnvironment
 
     @Published public var repository: RepositoryItem?
     @Published public var memos: [MemoItem] = []
@@ -22,6 +22,17 @@ public final class RepositoryDetailViewModel: ObservableObject {
 
     public init(environment: AppEnvironment = .shared) {
         self.environment = environment
+    }
+
+    public func openInExternalTerminal() {
+        guard let path = localDirectoryPath else { return }
+        let settings = environment.settingsRepository.loadSettings()
+        let app = settings.terminalApp == .embedded ? .terminal : settings.terminalApp
+        try? environment.terminalExecutionService.executeInTerminal(
+            command: "",
+            workingDirectory: path,
+            terminalApp: app
+        )
     }
 
     public func setRepository(_ repo: RepositoryItem?) {
@@ -49,6 +60,11 @@ public final class RepositoryDetailViewModel: ObservableObject {
                 }
             }
 
+            environment.terminalSessionManager.activeRepositoryId = repo.id
+            if let path = self.localDirectoryPath {
+                _ = environment.terminalSessionManager.getOrCreateSession(for: repo.id, name: repo.name, localPath: path)
+            }
+
             Task {
                 await loadMemos(for: repo.id)
                 await fetchLatestCommitIfNeeded(for: repo)
@@ -56,6 +72,7 @@ public final class RepositoryDetailViewModel: ObservableObject {
         } else {
             self.memos = []
             self.localDirectoryPath = nil
+            environment.terminalSessionManager.activeRepositoryId = nil
         }
     }
 
@@ -162,6 +179,9 @@ public final class RepositoryDetailViewModel: ObservableObject {
         guard let repo = repository else { return }
         self.localDirectoryPath = path
         environment.localPathRepository.setLocalPath(path, for: repo.id)
+        if let session = environment.terminalSessionManager.session(for: repo.id) {
+            session.updateWorkingDirectoryIfNeeded(path)
+        }
     }
 
     public func chooseLocalFolder() {
@@ -207,18 +227,41 @@ public final class RepositoryDetailViewModel: ObservableObject {
         let activePreset = preset ?? settings.aiAgentPreset
 
         do {
-            let updated = try await environment.executeAgentTaskUseCase.execute(
-                repository: repo,
-                memo: memo,
-                localPath: validPath,
-                settings: settings,
-                overridePreset: preset
-            )
+            if settings.terminalApp == .embedded {
+                let prompt = environment.executeAgentTaskUseCase.buildPrompt(repository: repo, memo: memo, template: settings.customPromptTemplate)
+                let command = environment.executeAgentTaskUseCase.buildCommand(prompt: prompt, settings: settings, overridePreset: preset)
 
-            if let index = memos.firstIndex(where: { $0.id == memo.id }) {
-                memos[index] = updated
+                environment.terminalSessionManager.executeCommand(
+                    command: command,
+                    repositoryId: repo.id,
+                    name: repo.name,
+                    localPath: validPath
+                )
+
+                var updatedMemo = memo
+                updatedMemo.status = .inProgress
+                updatedMemo.lastExecutedAt = Date()
+                updatedMemo.updatedAt = Date()
+                try await environment.memoRepository.saveMemo(updatedMemo)
+
+                if let index = memos.firstIndex(where: { $0.id == memo.id }) {
+                    memos[index] = updatedMemo
+                }
+                self.successMessage = "하단 터미널에서 [\(activePreset.shortName)] 작업을 시작했습니다!"
+            } else {
+                let updated = try await environment.executeAgentTaskUseCase.execute(
+                    repository: repo,
+                    memo: memo,
+                    localPath: validPath,
+                    settings: settings,
+                    overridePreset: preset
+                )
+
+                if let index = memos.firstIndex(where: { $0.id == memo.id }) {
+                    memos[index] = updated
+                }
+                self.successMessage = "터미널에서 [\(activePreset.shortName)] 작업을 시작했습니다!"
             }
-            self.successMessage = "터미널에서 [\(activePreset.shortName)] 작업을 시작했습니다!"
         } catch {
             self.errorMessage = "작업 실행 실패: \(error.localizedDescription)"
         }
@@ -275,23 +318,47 @@ public final class RepositoryDetailViewModel: ObservableObject {
         let activePreset = preset ?? settings.aiAgentPreset
 
         do {
-            let updatedList = try await environment.executeAgentTaskUseCase.executeBatch(
-                repository: repo,
-                memos: targets,
-                localPath: validPath,
-                settings: settings,
-                overridePreset: preset
-            )
+            if settings.terminalApp == .embedded {
+                let prompt = environment.executeAgentTaskUseCase.buildBatchPrompt(repository: repo, memos: targets, template: settings.customPromptTemplate)
+                let command = environment.executeAgentTaskUseCase.buildCommand(prompt: prompt, settings: settings, overridePreset: preset)
 
-            // 로컬 메모 리스트 갱신
-            for updated in updatedList {
-                if let index = memos.firstIndex(where: { $0.id == updated.id }) {
-                    memos[index] = updated
+                environment.terminalSessionManager.executeCommand(
+                    command: command,
+                    repositoryId: repo.id,
+                    name: repo.name,
+                    localPath: validPath
+                )
+
+                let now = Date()
+                for var memo in targets {
+                    memo.status = .inProgress
+                    memo.lastExecutedAt = now
+                    memo.updatedAt = now
+                    try await environment.memoRepository.saveMemo(memo)
+                    if let index = memos.firstIndex(where: { $0.id == memo.id }) {
+                        memos[index] = memo
+                    }
                 }
-            }
 
-            self.successMessage = "터미널에서 선택한 \(targets.count)개 항목에 대해 [\(activePreset.shortName)] 작업을 시작했습니다!"
-            // 선택 상태를 유지하여 사용자가 추가 실행이나 다른 AI로 재실행할 수 있도록 지원
+                self.successMessage = "하단 터미널에서 선택한 \(targets.count)개 항목에 대해 [\(activePreset.shortName)] 작업을 시작했습니다!"
+            } else {
+                let updatedList = try await environment.executeAgentTaskUseCase.executeBatch(
+                    repository: repo,
+                    memos: targets,
+                    localPath: validPath,
+                    settings: settings,
+                    overridePreset: preset
+                )
+
+                // 로컬 메모 리스트 갱신
+                for updated in updatedList {
+                    if let index = memos.firstIndex(where: { $0.id == updated.id }) {
+                        memos[index] = updated
+                    }
+                }
+
+                self.successMessage = "터미널에서 선택한 \(targets.count)개 항목에 대해 [\(activePreset.shortName)] 작업을 시작했습니다!"
+            }
         } catch {
             self.errorMessage = "일괄 작업 실행 실패: \(error.localizedDescription)"
         }

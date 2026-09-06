@@ -19,6 +19,9 @@ mkdir -p "$RESOURCES_DIR"
 cp ".build/release/$APP_NAME" "$MACOS_DIR/$APP_NAME"
 chmod +x "$MACOS_DIR/$APP_NAME"
 
+# 리소스 번들 복사 (SwiftTerm 등)
+cp -r .build/release/*.bundle "$RESOURCES_DIR/" 2>/dev/null || true
+
 # Info.plist 생성
 cat <<EOF > "$CONTENTS_DIR/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>

@@ -14,6 +14,7 @@ public final class AppEnvironment: Sendable {
     public let dockBadgeService: DockBadgeServiceProtocol
     public let notificationService: SystemNotificationServiceProtocol
     public let terminalExecutionService: TerminalExecutionServiceProtocol
+    public let terminalSessionManager: TerminalSessionManager
 
     // MARK: - Use Cases
     public let fetchRepositoriesUseCase: FetchRepositoriesUseCase
@@ -30,7 +31,8 @@ public final class AppEnvironment: Sendable {
         localPathRepository: LocalPathRepositoryProtocol = LocalPathRepositoryImpl(),
         dockBadgeService: DockBadgeServiceProtocol = DockBadgeManager(),
         notificationService: SystemNotificationServiceProtocol = NotificationManager(),
-        terminalExecutionService: TerminalExecutionServiceProtocol = TerminalExecutionService()
+        terminalExecutionService: TerminalExecutionServiceProtocol = TerminalExecutionService(),
+        terminalSessionManager: TerminalSessionManager = .shared
     ) {
         self.githubRepository = githubRepository
         self.memoRepository = memoRepository
@@ -39,6 +41,7 @@ public final class AppEnvironment: Sendable {
         self.dockBadgeService = dockBadgeService
         self.notificationService = notificationService
         self.terminalExecutionService = terminalExecutionService
+        self.terminalSessionManager = terminalSessionManager
 
         let staleUseCase = CalculateStaleStatusUseCase()
         self.calculateStaleStatusUseCase = staleUseCase

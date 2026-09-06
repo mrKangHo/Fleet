@@ -33,6 +33,7 @@
 		8F955E14AE4FFE177B5A4EA1 /* RepositoryRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78B6B89789B3C83F0EB72165 /* RepositoryRowView.swift */; };
 		923CBF4F13176BA71DD54EC9 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE0C63E8B10F5BDF7D18252 /* AppSettings.swift */; };
 		96620B8410299CC0859AAFF8 /* ManageMemoUseCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65B71D1BADB462CFB0D16806 /* ManageMemoUseCase.swift */; };
+		9786B4EC3A2F72D083D144A9 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 28D4BB324A4119D419248010 /* SwiftTerm */; };
 		9FC6E8199E5501F6FC864A89 /* FetchRepositoriesUseCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 791FBCE9FFF5A969494AB92F /* FetchRepositoriesUseCase.swift */; };
 		A1CF707537C74EA6AC974B73 /* SettingsRepositoryProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A977FA7195A1EBE4380D21 /* SettingsRepositoryProtocol.swift */; };
 		ACE0FED3D1417411DAC971CE /* TerminalExecutionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C638BFB9F603EFA7133FE18 /* TerminalExecutionService.swift */; };
@@ -105,6 +106,17 @@
 		EE0A9C8B6E0E7AB354759E50 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		F9552B1F13DBB64029206E12 /* GitHubAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubAPIService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2E56868F3481D3F4F8946433 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9786B4EC3A2F72D083D144A9 /* SwiftTerm in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		01FF5B2779F29D75862F0396 /* Sidebar */ = {
@@ -348,6 +360,7 @@
 			buildConfigurationList = B05DE11EF8022120E0489814 /* Build configuration list for PBXNativeTarget "WorkManager" */;
 			buildPhases = (
 				746B097EFFC9954D19BE7A2A /* Sources */,
+				2E56868F3481D3F4F8946433 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -355,6 +368,7 @@
 			);
 			name = WorkManager;
 			packageProductDependencies = (
+				28D4BB324A4119D419248010 /* SwiftTerm */,
 			);
 			productName = WorkManager;
 			productReference = 131B88659C46489681314957 /* WorkManager.app */;
@@ -398,6 +412,9 @@
 			);
 			mainGroup = A6E93BC1AEB5204A08D8CED0;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				196C9188E40DE3AA96757671 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 857D233A27362DC9EA1F817C /* Products */;
 			projectDirPath = "";
@@ -700,6 +717,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		196C9188E40DE3AA96757671 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		28D4BB324A4119D419248010 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 196C9188E40DE3AA96757671 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 46D91490A9C40AAC7EC917CE /* Project object */;
 }

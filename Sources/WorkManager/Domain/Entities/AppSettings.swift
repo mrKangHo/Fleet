@@ -79,13 +79,14 @@ public struct AppSettings: Codable, Hashable, Sendable {
     }
 
     public enum TerminalApp: String, Codable, CaseIterable, Sendable {
+        case embedded = "앱 내장 터미널 (VS Code 스타일)"
         case terminal = "macOS Terminal"
         case iTerm = "iTerm2"
         case ghostty = "Ghostty"
 
         public var bundleIdentifier: String {
             switch self {
-            case .terminal: return "com.apple.Terminal"
+            case .embedded, .terminal: return "com.apple.Terminal"
             case .iTerm: return "com.googlecode.iterm2"
             case .ghostty: return "com.mitchellh.ghostty"
             }
@@ -95,6 +96,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
             let container = try decoder.singleValueContainer()
             let rawString = (try? container.decode(String.self)) ?? ""
             switch rawString {
+            case "앱 내장 터미널 (VS Code 스타일)", "앱 내장 터미널 (추천)", "embedded":
+                self = .embedded
             case "macOS Terminal", "Terminal":
                 self = .terminal
             case "iTerm2", "iTerm":
@@ -102,7 +105,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
             case "Ghostty", "ghostty":
                 self = .ghostty
             default:
-                self = .terminal
+                self = .embedded
             }
         }
     }
@@ -142,7 +145,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         aiAgentPreset: AIAgentPreset = .claude,
         dangerouslySkipPermissions: Bool = true,
         customCliTemplate: String = "claude --dangerously-skip-permissions \"{prompt}\"",
-        terminalApp: TerminalApp = .terminal,
+        terminalApp: TerminalApp = .embedded,
         defaultProjectsDirectory: String = "~/Documents",
         customPromptTemplate: String = """
 [작업 목표] {memo_title}
@@ -187,7 +190,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.aiAgentPreset = try container.decodeIfPresent(AIAgentPreset.self, forKey: .aiAgentPreset) ?? .claude
         self.dangerouslySkipPermissions = try container.decodeIfPresent(Bool.self, forKey: .dangerouslySkipPermissions) ?? true
         self.customCliTemplate = try container.decodeIfPresent(String.self, forKey: .customCliTemplate) ?? "claude --dangerously-skip-permissions \"{prompt}\""
-        self.terminalApp = try container.decodeIfPresent(TerminalApp.self, forKey: .terminalApp) ?? .terminal
+        self.terminalApp = try container.decodeIfPresent(TerminalApp.self, forKey: .terminalApp) ?? .embedded
         self.defaultProjectsDirectory = try container.decodeIfPresent(String.self, forKey: .defaultProjectsDirectory) ?? "~/Documents"
         self.customPromptTemplate = try container.decodeIfPresent(String.self, forKey: .customPromptTemplate) ?? """
 [작업 목표] {memo_title}

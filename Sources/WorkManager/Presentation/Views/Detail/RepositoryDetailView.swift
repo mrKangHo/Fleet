@@ -5,6 +5,7 @@ public struct RepositoryDetailView: View {
     @ObservedObject var viewModel: RepositoryDetailViewModel
     var onMemoCountChanged: ((Int) -> Void)?
 
+    @ObservedObject private var terminalManager = TerminalSessionManager.shared
     @State private var showCopiedFeedback = false
 
     public init(viewModel: RepositoryDetailViewModel, onMemoCountChanged: ((Int) -> Void)? = nil) {
@@ -14,7 +15,8 @@ public struct RepositoryDetailView: View {
 
     public var body: some View {
         Group {
-                if let repo = viewModel.repository {
+            if let repo = viewModel.repository {
+                VStack(spacing: 0) {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 22) {
                             // MARK: - 1. Hero Header (저장소 기본 정보 및 액션 버튼)
@@ -92,6 +94,20 @@ public struct RepositoryDetailView: View {
                                         }
                                         .buttonStyle(.bordered)
                                         .controlSize(.small)
+
+                                        Button(action: {
+                                            terminalManager.togglePanel(for: repo.id, name: repo.name, localPath: viewModel.localDirectoryPath)
+                                        }) {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "terminal.fill")
+                                                    .foregroundColor(terminalManager.isPanelVisible ? .accentColor : .secondary)
+                                                Text("터미널")
+                                                    .font(.system(size: 11, weight: .medium))
+                                            }
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .help("하단 터미널 열기/닫기 (⌃~)")
 
                                         Link(destination: repo.htmlUrl) {
                                             HStack(spacing: 4) {
@@ -308,7 +324,30 @@ public struct RepositoryDetailView: View {
                         .padding(22)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
+
+                    // MARK: - VS Code 스타일 하단 터미널 패널
+                    if terminalManager.isPanelVisible {
+                        let session = terminalManager.getOrCreateSession(
+                            for: repo.id,
+                            name: repo.name,
+                            localPath: viewModel.localDirectoryPath
+                        )
+                        VSCodeTerminalPanelView(
+                            session: session,
+                            repository: repo,
+                            localPath: viewModel.localDirectoryPath,
+                            onChooseFolder: { viewModel.chooseLocalFolder() },
+                            onOpenExternal: { viewModel.openInExternalTerminal() }
+                        )
+                        .frame(height: terminalManager.isMaximized ? 480 : terminalManager.panelHeight)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+
+                    // MARK: - VS Code 스타일 하단 상태 바
+                    bottomStatusBar(for: repo)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
                     // Empty State (저장소 미선택)
                     VStack(spacing: 16) {
                         Image(systemName: "folder.badge.gearshape")
@@ -331,6 +370,73 @@ public struct RepositoryDetailView: View {
                 }
             }
         }
+
+    // MARK: - VS Code Style Bottom Status Bar
+    private func bottomStatusBar(for repo: RepositoryItem) -> some View {
+        HStack(spacing: 12) {
+            // 터미널 토글 버튼
+            Button(action: {
+                terminalManager.togglePanel(for: repo.id, name: repo.name, localPath: viewModel.localDirectoryPath)
+            }) {
+                HStack(spacing: 5) {
+                    Image(systemName: "terminal.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(terminalManager.isPanelVisible ? .accentColor : .secondary)
+
+                    Text("터미널")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(terminalManager.isPanelVisible ? .primary : .secondary)
+
+                    Circle()
+                        .fill(terminalManager.session(for: repo.id)?.isRunning == true ? AppTheme.activeGreen : Color.secondary.opacity(0.4))
+                        .frame(width: 5, height: 5)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(terminalManager.isPanelVisible ? Color.accentColor.opacity(0.15) : Color.clear)
+                .cornerRadius(4)
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("`", modifiers: .control)
+            .help("터미널 패널 열기/닫기 (⌃~)")
+
+            // 브랜치 정보
+            HStack(spacing: 3) {
+                Image(systemName: "arrow.triangle.branch")
+                    .font(.system(size: 10))
+                Text(repo.defaultBranch)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+            }
+            .foregroundColor(.secondary)
+
+            Spacer()
+
+            // 메모 건수 및 방치일 요약
+            HStack(spacing: 10) {
+                Text("메모 \(viewModel.memos.count)건")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(staleColor(viewModel.staleStatus))
+                        .frame(width: 6, height: 6)
+                    Text(viewModel.staleStatus.displayBadge)
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundColor(staleColor(viewModel.staleStatus))
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 4.5)
+        .background(Color(nsColor: NSColor.windowBackgroundColor).opacity(0.95))
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(Color.primary.opacity(0.06)),
+            alignment: .top
+        )
+    }
 
     // MARK: - Metric Tile Component
     private func metricTile(title: String, value: String, icon: String, color: Color) -> some View {

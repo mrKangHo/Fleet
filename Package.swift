@@ -12,11 +12,15 @@ let package = Package(
             targets: ["WorkManager"]
         )
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.0.0")
+    ],
     targets: [
         .executableTarget(
             name: "WorkManager",
-            dependencies: [],
+            dependencies: [
+                .product(name: "SwiftTerm", package: "SwiftTerm")
+            ],
             path: "Sources/WorkManager",
             swiftSettings: [
                 .swiftLanguageMode(.v5)
