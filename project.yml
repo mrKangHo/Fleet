@@ -1,0 +1,49 @@
+name: WorkManager
+options:
+  bundleIdPrefix: com.workmanager
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    SWIFT_VERSION: "5.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    CODE_SIGNING_ALLOWED: NO
+
+targets:
+  WorkManager:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Sources/WorkManager
+    settings:
+      base:
+        PRODUCT_NAME: WorkManager
+        PRODUCT_BUNDLE_IDENTIFIER: com.workmanager.macos
+        INFOPLIST_FILE: Support/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        COMBINE_HIDPI_IMAGES: YES
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../Frameworks"
+
+  WorkManagerTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Tests/WorkManagerTests
+    dependencies:
+      - target: WorkManager
+    settings:
+      base:
+        PRODUCT_NAME: WorkManagerTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.workmanager.macos.tests
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../Frameworks"
+          - "@loader_path/../Frameworks"
