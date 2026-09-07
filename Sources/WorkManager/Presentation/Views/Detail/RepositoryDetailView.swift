@@ -6,7 +6,8 @@ public struct RepositoryDetailView: View {
     var onMemoCountChanged: ((Int) -> Void)?
 
     @ObservedObject private var terminalManager = TerminalSessionManager.shared
-    @State private var showCopiedFeedback = false
+    @AppStorage("workmanager_file_tree_visible") private var isFileTreeVisible: Bool = true
+    @AppStorage("workmanager_file_tree_width") private var fileTreeWidth: Double = 270.0
 
     public init(viewModel: RepositoryDetailViewModel, onMemoCountChanged: ((Int) -> Void)? = nil) {
         self.viewModel = viewModel
@@ -16,8 +17,9 @@ public struct RepositoryDetailView: View {
     public var body: some View {
         Group {
             if let repo = viewModel.repository {
-                VStack(spacing: 0) {
-                    ScrollView {
+                HStack(spacing: 0) {
+                    VStack(spacing: 0) {
+                        ScrollView {
                         VStack(alignment: .leading, spacing: 22) {
                             // MARK: - 1. Hero Header (저장소 기본 정보 및 액션 버튼)
                             VStack(alignment: .leading, spacing: 14) {
@@ -75,51 +77,24 @@ public struct RepositoryDetailView: View {
 
                                     Spacer()
 
-                                    // Quick Actions (VS Code, Cursor, Clone URL 복사, 터미널, GitHub 열기)
+                                    // Quick Actions (파일 탐색기 토글, 터미널, GitHub 열기)
                                     HStack(spacing: 7) {
-                                        // 1. VS Code 열기
-                                        Button(action: { viewModel.openInVSCode() }) {
-                                            HStack(spacing: 4) {
-                                                Image(systemName: "chevron.left.forwardslash.chevron.right")
-                                                    .font(.system(size: 10, weight: .semibold))
-                                                Text("VS Code")
-                                                    .font(.system(size: 11, weight: .medium))
-                                            }
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .controlSize(.small)
-                                        .help("로컬 프로젝트 폴더를 VS Code에서 열기")
-
-                                        // 2. Cursor 열기
-                                        Button(action: { viewModel.openInCursor() }) {
-                                            HStack(spacing: 4) {
-                                                Image(systemName: "sparkles")
-                                                    .font(.system(size: 10, weight: .semibold))
-                                                Text("Cursor")
-                                                    .font(.system(size: 11, weight: .medium))
-                                            }
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .controlSize(.small)
-                                        .help("로컬 프로젝트 폴더를 Cursor에서 열기")
-
+                                        // 1. 파일 탐색기 사이드바 토글
                                         Button(action: {
-                                            NSPasteboard.general.clearContents()
-                                            NSPasteboard.general.setString("https://github.com/\(repo.fullName).git", forType: .string)
-                                            withAnimation { showCopiedFeedback = true }
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                                withAnimation { showCopiedFeedback = false }
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                                isFileTreeVisible.toggle()
                                             }
                                         }) {
-                                            HStack(spacing: 4) {
-                                                Image(systemName: showCopiedFeedback ? "checkmark.circle.fill" : "doc.on.doc")
-                                                    .foregroundColor(showCopiedFeedback ? AppTheme.activeGreen : .secondary)
-                                                Text(showCopiedFeedback ? "복사됨!" : "Clone URL")
+                                            HStack(spacing: 5) {
+                                                Image(systemName: "sidebar.right")
+                                                    .foregroundColor(isFileTreeVisible ? .accentColor : .secondary)
+                                                Text("파일 탐색기")
                                                     .font(.system(size: 11, weight: .medium))
                                             }
                                         }
                                         .buttonStyle(.bordered)
                                         .controlSize(.small)
+                                        .help("오른쪽 로컬 디렉토리 파일 탐색기 열기/닫기")
 
                                         Button(action: {
                                             terminalManager.togglePanel(for: repo.id, name: repo.name, localPath: viewModel.localDirectoryPath)
@@ -391,7 +366,42 @@ public struct RepositoryDetailView: View {
                     bottomStatusBar(for: repo)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
+
+                // MARK: - 오른쪽 로컬 작업 디렉토리 파일 트리 사이드바
+                if isFileTreeVisible {
+                    FileTreeSidebarView(
+                        rootPath: viewModel.localDirectoryPath,
+                        sidebarWidth: $fileTreeWidth,
+                        onChooseFolder: { viewModel.chooseLocalFolder() },
+                        onOpenFile: { url in
+                            NSWorkspace.shared.open(url)
+                        },
+                        onRevealInFinder: { url in
+                            NSWorkspace.shared.activateFileViewerSelecting([url])
+                        },
+                        onOpenInTerminal: { targetPath in
+                            if !terminalManager.isPanelVisible {
+                                terminalManager.togglePanel(for: repo.id, name: repo.name, localPath: viewModel.localDirectoryPath)
+                            }
+                            let grp = terminalManager.getOrCreateGroup(for: repo.id, name: repo.name, localPath: viewModel.localDirectoryPath)
+                            if let activeTab = grp.activeTab {
+                                var isDir: ObjCBool = false
+                                let exists = FileManager.default.fileExists(atPath: targetPath, isDirectory: &isDir)
+                                let dirPath = (exists && isDir.boolValue) ? targetPath : (targetPath as NSString).deletingLastPathComponent
+                                activeTab.sendCommand("cd \"\(dirPath)\"\n")
+                            }
+                        },
+                        onClose: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                isFileTreeVisible = false
+                            }
+                        }
+                    )
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
                     // Empty State (저장소 미선택)
                     VStack(spacing: 16) {
                         Image(systemName: "folder.badge.gearshape")
@@ -493,6 +503,22 @@ public struct RepositoryDetailView: View {
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundColor(staleColor(viewModel.staleStatus))
                 }
+
+                // 파일 탐색기 사이드바 토글
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        isFileTreeVisible.toggle()
+                    }
+                }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "sidebar.right")
+                        Text("파일 탐색기")
+                    }
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(isFileTreeVisible ? .accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help("로컬 디렉토리 파일 탐색기 토글")
             }
         }
         .padding(.horizontal, 14)
