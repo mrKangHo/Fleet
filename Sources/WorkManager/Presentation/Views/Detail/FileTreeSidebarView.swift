@@ -356,7 +356,7 @@ public struct FileTreeSidebarView: View {
                 // 하단 정보 풋터
                 sidebarFooter
             }
-            .background(Color(nsColor: .windowBackgroundColor).opacity(0.65))
+            .background(AppTheme.stitchContainerLowest)
         }
         .frame(width: max(220, min(sidebarWidth, 550)))
         .onAppear {
@@ -468,7 +468,7 @@ public struct FileTreeSidebarView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(Color.primary.opacity(0.025))
+        .background(AppTheme.stitchElevated)
     }
 
     // MARK: - Search Bar
@@ -493,11 +493,11 @@ public struct FileTreeSidebarView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(AppTheme.stitchContainer)
         .cornerRadius(6)
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                .stroke(AppTheme.stitchBorder, lineWidth: 1)
         )
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -632,7 +632,7 @@ public struct FileTreeSidebarView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(Color.primary.opacity(0.025))
+        .background(AppTheme.stitchElevated)
     }
 }
 

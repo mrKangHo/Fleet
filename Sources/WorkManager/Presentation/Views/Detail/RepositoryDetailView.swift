@@ -91,6 +91,7 @@ public struct RepositoryDetailView: View {
                     bottomStatusBar(for: repo)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(AppTheme.stitchBackground)
 
                 // MARK: - 오른쪽 로컬 작업 디렉토리 파일 트리 사이드바
                 if isFileTreeVisible {
@@ -126,6 +127,7 @@ public struct RepositoryDetailView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(AppTheme.stitchBackground)
         } else {
                     // Empty State (저장소 미선택)
                     VStack(spacing: 16) {
@@ -145,7 +147,7 @@ public struct RepositoryDetailView: View {
                             .frame(maxWidth: 380)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(nsColor: .windowBackgroundColor))
+                    .background(AppTheme.stitchBackground)
                 }
             }
         }
@@ -248,11 +250,11 @@ public struct RepositoryDetailView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 4.5)
-        .background(Color(nsColor: NSColor.windowBackgroundColor).opacity(0.95))
+        .background(AppTheme.stitchElevated)
         .overlay(
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(Color.primary.opacity(0.06)),
+                .foregroundColor(AppTheme.stitchBorder),
             alignment: .top
         )
     }
@@ -479,11 +481,11 @@ public struct RepositoryDetailView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.6))
+        .background(AppTheme.stitchElevated)
         .overlay(
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(Color.primary.opacity(0.06)),
+                .foregroundColor(AppTheme.stitchBorder),
             alignment: .bottom
         )
     }

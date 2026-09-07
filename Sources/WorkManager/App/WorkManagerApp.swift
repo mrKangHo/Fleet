@@ -9,6 +9,7 @@ struct WorkManagerApp: App {
         WindowGroup {
             MainSplitView(environment: environment)
                 .frame(minWidth: 850, minHeight: 550)
+                .preferredColorScheme(.dark)
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified(showsTitle: true))
@@ -23,6 +24,7 @@ struct WorkManagerApp: App {
 
         MenuBarExtra("WorkManager", systemImage: "sparkles.rectangle.stack") {
             MenuBarExtraView(environment: environment)
+                .preferredColorScheme(.dark)
         }
         .menuBarExtraStyle(.window)
     }

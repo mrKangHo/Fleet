@@ -42,10 +42,15 @@ public struct MainSplitView: View {
             VStack(spacing: 0) {
                 topNavigationBar
                 Divider()
+                    .overlay(AppTheme.stitchBorder)
                 selectedTabContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(AppTheme.stitchBackground)
             }
             .navigationTitle(detailViewModel.repository?.name ?? "WorkManager")
+            .background(AppTheme.stitchBackground)
         }
+        .preferredColorScheme(.dark)
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView {
                 Task {
@@ -100,7 +105,13 @@ public struct MainSplitView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial)
+        .background(AppTheme.stitchElevated)
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(AppTheme.stitchBorder),
+            alignment: .bottom
+        )
     }
 
     private var leadingProjectInfo: some View {

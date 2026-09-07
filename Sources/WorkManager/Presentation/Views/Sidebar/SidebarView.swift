@@ -410,8 +410,15 @@ public struct SidebarView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(.ultraThinMaterial)
+            .background(AppTheme.stitchElevated)
+            .overlay(
+                Rectangle()
+                    .frame(height: 1)
+                    .foregroundColor(AppTheme.stitchBorder),
+                alignment: .top
+            )
         }
+        .background(AppTheme.stitchContainerLowest)
     }
 
     // MARK: - Helper Views & Properties

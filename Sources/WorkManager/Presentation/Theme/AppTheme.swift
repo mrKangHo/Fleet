@@ -9,6 +9,17 @@ public enum AppTheme {
     public static let subtleBlue = Color(red: 0.20, green: 0.55, blue: 0.95)
     public static let royalPurple = Color(red: 0.60, green: 0.35, blue: 0.95)
 
+    // MARK: - Google Stitch Dark Studio Design System Tokens
+    public static let stitchBackground = Color(red: 19/255, green: 19/255, blue: 21/255) // #131315
+    public static let stitchBase = Color(red: 20/255, green: 20/255, blue: 22/255) // #141416
+    public static let stitchElevated = Color(red: 28/255, green: 28/255, blue: 30/255) // #1C1C1E
+    public static let stitchContainer = Color(red: 31/255, green: 31/255, blue: 33/255) // #1F1F21
+    public static let stitchContainerLowest = Color(red: 14/255, green: 14/255, blue: 16/255) // #0E0E10
+    public static let stitchBorder = Color.white.opacity(0.07)
+    public static let stitchTextPrimary = Color(red: 245/255, green: 245/255, blue: 247/255) // #F5F5F7
+    public static let stitchTextSecondary = Color(red: 152/255, green: 152/255, blue: 157/255) // #98989D
+    public static let stitchTextTertiary = Color(red: 99/255, green: 99/255, blue: 102/255) // #636366
+
     // MARK: - Subtle Gradients
     public static let activeGradient = LinearGradient(
         colors: [Color(red: 0.18, green: 0.82, blue: 0.48), Color(red: 0.10, green: 0.65, blue: 0.35)],

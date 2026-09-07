@@ -177,7 +177,12 @@ public struct MemoTimelineView: View {
             }
         }
         .padding(14)
-        .glassCard(cornerRadius: 12)
+        .background(AppTheme.stitchElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(AppTheme.stitchBorder, lineWidth: 1)
+        )
     }
 
     private var dashboardHeader: some View {
@@ -687,12 +692,12 @@ public struct MemoTimelineView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isDropTargeted ? iconColor.opacity(0.08) : Color.primary.opacity(0.025))
+                .fill(isDropTargeted ? iconColor.opacity(0.12) : AppTheme.stitchContainer.opacity(0.65))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(
-                    isDropTargeted ? iconColor.opacity(0.6) : (status == .inProgress && !memos.isEmpty ? Color.orange.opacity(0.25) : Color.primary.opacity(0.06)),
+                    isDropTargeted ? iconColor.opacity(0.6) : (status == .inProgress && !memos.isEmpty ? Color.orange.opacity(0.3) : AppTheme.stitchBorder),
                     lineWidth: isDropTargeted ? 1.5 : 1
                 )
         )
@@ -1297,12 +1302,12 @@ public struct KanbanMemoCardView: View {
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.85))
+                .fill(AppTheme.stitchElevated)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(
-                    isSelected ? Color.accentColor : (isHovered ? Color.primary.opacity(0.16) : Color.primary.opacity(0.08)),
+                    isSelected ? Color.accentColor : (isHovered ? Color.white.opacity(0.18) : AppTheme.stitchBorder),
                     lineWidth: isSelected ? 1.5 : 1
                 )
         )
