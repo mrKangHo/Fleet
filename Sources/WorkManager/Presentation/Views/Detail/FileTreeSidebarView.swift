@@ -579,47 +579,60 @@ public struct FileTreeSidebarView: View {
 
     // MARK: - Sidebar Footer
     private var sidebarFooter: some View {
-        HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             if let path = rootPath {
-                Button(action: { onRevealInFinder(URL(fileURLWithPath: path)) }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.up.forward.app")
-                            .font(.system(size: 9))
-                        Text("Finder")
-                            .font(.system(size: 10))
-                    }
+                HStack(spacing: 5) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 9))
+                        .foregroundColor(.accentColor)
+                    Text(path)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer()
                 }
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
-                .help("Finder에서 로컬 폴더 열기")
-
-                Button(action: { onOpenInTerminal(path) }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "terminal")
-                            .font(.system(size: 9))
-                        Text("터미널")
-                            .font(.system(size: 10))
-                    }
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
-                .help("내장 터미널에서 이 폴더로 이동")
             }
 
-            Spacer()
+            HStack(spacing: 8) {
+                if let path = rootPath {
+                    Button(action: { onRevealInFinder(URL(fileURLWithPath: path)) }) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "arrow.up.forward.app")
+                                .font(.system(size: 9))
+                            Text("Finder")
+                                .font(.system(size: 10))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.secondary)
+                    .help("Finder에서 로컬 폴더 열기")
 
-            if rootPath != nil {
-                Button("폴더 변경") {
+                    Button(action: { onOpenInTerminal(path) }) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "terminal")
+                                .font(.system(size: 9))
+                            Text("터미널")
+                                .font(.system(size: 10))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.secondary)
+                    .help("내장 터미널에서 이 폴더로 이동")
+                }
+
+                Spacer()
+
+                Button(rootPath == nil ? "로컬 폴더 연결..." : "폴더 변경") {
                     onChooseFolder()
                 }
-                .buttonStyle(.plain)
-                .font(.system(size: 10))
-                .foregroundColor(.accentColor)
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.primary.opacity(0.02))
+        .padding(.vertical, 7)
+        .background(Color.primary.opacity(0.025))
     }
 }
 

@@ -59,12 +59,18 @@ public struct MemoTimelineView: View {
             // MARK: - 3. 뷰 모드에 따른 렌더링 (칸반 보드 ↔ 리스트)
             if viewMode == .kanban {
                 kanbanBoard
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .transition(.opacity)
             } else {
-                memoList
-                    .transition(.opacity)
+                ScrollView {
+                    memoList
+                        .padding(.vertical, 2)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.opacity)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: viewMode)
     }
 
@@ -560,7 +566,7 @@ public struct MemoTimelineView: View {
                         memos: viewModel.memos.filter { $0.status == .completed }
                     )
                 }
-                .frame(minHeight: 380)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
