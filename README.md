@@ -131,7 +131,7 @@ Sources/Fleet/
 이 저장소를 그대로 Homebrew 탭(tap)으로 사용합니다 — 별도의 `homebrew-*` 저장소 없이 바로 설치할 수 있습니다.
 
 ```bash
-brew tap mrKangHo/workmanager https://github.com/mrKangHo/workmanager.git
+brew tap mrKangHo/fleet https://github.com/mrKangHo/Fleet.git
 brew install --cask fleet
 ```
 

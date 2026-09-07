@@ -131,7 +131,7 @@ Sources/Fleet/
 This repository doubles as its own Homebrew tap — no separate `homebrew-*` repo needed.
 
 ```bash
-brew tap mrKangHo/workmanager https://github.com/mrKangHo/workmanager.git
+brew tap mrKangHo/fleet https://github.com/mrKangHo/Fleet.git
 brew install --cask fleet
 ```
 

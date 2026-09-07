@@ -2,10 +2,10 @@ cask "fleet" do
   version "1.1.0"
   sha256 "a2591ceda7ae3b3bb57345e66ab479367d7eeeac8f862795d973c50bdaf2f4e0"
 
-  url "https://github.com/mrKangHo/workmanager/releases/download/v#{version}/Fleet-#{version}.zip"
+  url "https://github.com/mrKangHo/Fleet/releases/download/v#{version}/Fleet-#{version}.zip"
   name "Fleet"
   desc "Track GitHub repository neglect and run AI agent tasks"
-  homepage "https://github.com/mrKangHo/workmanager"
+  homepage "https://github.com/mrKangHo/Fleet"
 
   livecheck do
     url :url

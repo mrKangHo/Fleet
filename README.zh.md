@@ -131,7 +131,7 @@ Sources/Fleet/
 本仓库本身即作为 Homebrew tap 使用——无需另建独立的 `homebrew-*` 仓库。
 
 ```bash
-brew tap mrKangHo/workmanager https://github.com/mrKangHo/workmanager.git
+brew tap mrKangHo/fleet https://github.com/mrKangHo/Fleet.git
 brew install --cask fleet
 ```
 

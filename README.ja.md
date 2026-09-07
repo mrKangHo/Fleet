@@ -131,7 +131,7 @@ Sources/Fleet/
 このリポジトリ自体をHomebrewのタップ（tap）として使用します — 別途`homebrew-*`リポジトリを作る必要はありません。
 
 ```bash
-brew tap mrKangHo/workmanager https://github.com/mrKangHo/workmanager.git
+brew tap mrKangHo/fleet https://github.com/mrKangHo/Fleet.git
 brew install --cask fleet
 ```
 
