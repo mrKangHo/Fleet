@@ -149,11 +149,9 @@ public struct AgentWorkflowsView: View {
                             .font(.system(.headline, design: .rounded))
                             .fontWeight(.bold)
                         Spacer()
-                        if let repo = selectedRepo {
-                            Text("선택된 저장소: \(repo.name)")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
+                        Text("\(activeMemos.count + pendingMemos.count)개 작업")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
                     }
 
                     if activeMemos.isEmpty && pendingMemos.isEmpty {

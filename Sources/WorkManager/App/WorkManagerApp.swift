@@ -12,7 +12,7 @@ struct WorkManagerApp: App {
                 .preferredColorScheme(.dark)
         }
         .windowStyle(.titleBar)
-        .windowToolbarStyle(.unified(showsTitle: true))
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             SidebarCommands()
             CommandGroup(replacing: .appInfo) {

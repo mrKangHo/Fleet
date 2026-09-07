@@ -261,20 +261,9 @@ public struct RepositoryDetailView: View {
 
     // MARK: - Compact & Refined Repository Header Bar
     private func repositoryHeaderBar(for repo: RepositoryItem) -> some View {
-        VStack(spacing: 7) {
-            // 상단 주요 행: 이름, 상태 뱃지, 언어, 퀵 액션
+        VStack(spacing: 6) {
+            // 상단 주요 행: 상태 뱃지, 언어, 퀵 액션 (저장소명은 최상단 네비게이션 바에만 단독 표시)
             HStack(spacing: 8) {
-                // 저장소 아이콘
-                Image(systemName: repo.isPrivate ? "lock.shield.fill" : "folder.fill")
-                    .font(.system(size: 15))
-                    .foregroundColor(.accentColor)
-
-                // 저장소 전체 이름
-                Text(repo.fullName)
-                    .font(.system(.title3, design: .rounded))
-                    .fontWeight(.bold)
-                    .lineLimit(1)
-
                 // Private / Fork 뱃지
                 if repo.isPrivate {
                     HStack(spacing: 2) {

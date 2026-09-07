@@ -47,7 +47,7 @@ public struct MainSplitView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(AppTheme.stitchBackground)
             }
-            .navigationTitle(detailViewModel.repository?.name ?? "WorkManager")
+            .navigationTitle("WorkManager")
             .background(AppTheme.stitchBackground)
         }
         .preferredColorScheme(.dark)
@@ -126,13 +126,23 @@ public struct MainSplitView: View {
             if let repo = detailViewModel.repository {
                 Text("—")
                     .foregroundColor(.secondary.opacity(0.5))
-                Text(repo.name)
-                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2.5)
-                    .background(Color.primary.opacity(0.06))
-                    .clipShape(Capsule())
+
+                HStack(spacing: 5) {
+                    Image(systemName: repo.isPrivate ? "lock.shield.fill" : "folder.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.accentColor)
+                    Text(repo.name)
+                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                        .foregroundColor(AppTheme.stitchTextPrimary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2.5)
+                .background(AppTheme.stitchContainer)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .strokeBorder(AppTheme.stitchBorder, lineWidth: 1)
+                )
             }
         }
     }
