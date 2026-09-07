@@ -14,11 +14,17 @@ public struct RepositoryRowView: View {
         VStack(alignment: .leading, spacing: 7) {
             // 1열: 상태 인디케이터 + 이름 + 잠금/포크 + D-day 뱃지
             HStack(spacing: 8) {
-                // 상태 발광 점
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 8, height: 8)
-                    .shadow(color: statusColor.opacity(0.6), radius: 3)
+                // 상태 발광 점 (Aura + Core)
+                ZStack {
+                    Circle()
+                        .fill(statusColor.opacity(0.22))
+                        .frame(width: 13, height: 13)
+
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 7, height: 7)
+                        .shadow(color: statusColor.opacity(0.7), radius: 3)
+                }
 
                 Text(repository.name)
                     .font(.system(.body, design: .rounded))
@@ -40,9 +46,9 @@ public struct RepositoryRowView: View {
 
                 Spacer(minLength: 6)
 
-                // D-day 뱃지 (Glass Capsule)
+                // D-day 뱃지 (Glass Capsule with monospaced digit)
                 Text(status.displayBadge)
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.system(size: 11, weight: .bold, design: .rounded).monospacedDigit())
                     .padding(.horizontal, 7)
                     .padding(.vertical, 2.5)
                     .background(statusBadgeBackground)
@@ -100,13 +106,17 @@ public struct RepositoryRowView: View {
                     .foregroundColor(.accentColor)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.accentColor.opacity(0.12))
+                    .background(Color.accentColor.opacity(0.14))
                     .clipShape(Capsule())
                 }
             }
         }
         .padding(.vertical, 6)
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isHovered ? Color.primary.opacity(0.04) : Color.clear)
+        )
         .contentShape(Rectangle())
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {

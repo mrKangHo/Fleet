@@ -165,3 +165,85 @@ final class AgentTaskExecutionTests: XCTestCase {
         XCTAssertEqual(mockTerminal.executedDirectory, "/Users/test/batch-repo")
     }
 }
+
+// MARK: - Multi-Tab Terminal & Auto-New Tab for Different Agents Tests
+final class TerminalMultiTabTests: XCTestCase {
+    private var manager: TerminalSessionManager!
+
+    override func setUp() {
+        super.setUp()
+        manager = TerminalSessionManager()
+    }
+
+    override func tearDown() {
+        manager.closeSession(for: 999)
+        super.tearDown()
+    }
+
+    func testGroupCreatesInitialDefaultTab() {
+        let group = manager.getOrCreateGroup(for: 999, name: "TestRepo", localPath: "/tmp")
+        XCTAssertEqual(group.tabs.count, 1)
+        XCTAssertEqual(group.tabs.first?.title, "터미널")
+        XCTAssertNil(group.tabs.first?.preset)
+        XCTAssertEqual(group.activeTabId, group.tabs.first?.id)
+    }
+
+    func testExecuteTaskWithAgentAAssignsPresetToIdleTab() {
+        let group = manager.getOrCreateGroup(for: 999, name: "TestRepo", localPath: "/tmp")
+        manager.executeCommand(command: "echo test", repositoryId: 999, name: "TestRepo", localPath: "/tmp", preset: .antigravity)
+
+        XCTAssertEqual(group.tabs.count, 1)
+        let tab = group.activeTab
+        XCTAssertEqual(tab?.preset, .antigravity)
+        XCTAssertEqual(tab?.title, "Antigravity")
+        XCTAssertTrue(tab?.hasExecutedTask == true)
+    }
+
+    func testSequentialAgentAThenAgentBSpawnsNewTab() {
+        let group = manager.getOrCreateGroup(for: 999, name: "TestRepo", localPath: "/tmp")
+
+        // 1. Agent A (Antigravity) 실행
+        manager.executeCommand(command: "echo 'Agent A'", repositoryId: 999, name: "TestRepo", localPath: "/tmp", preset: .antigravity)
+        XCTAssertEqual(group.tabs.count, 1)
+        XCTAssertEqual(group.activeTab?.preset, .antigravity)
+
+        // 2. 다른 에이전트 B (Claude) 신규 실행 시 새로운 탭 자동 생성 확인
+        manager.executeCommand(command: "echo 'Agent B'", repositoryId: 999, name: "TestRepo", localPath: "/tmp", preset: .claude)
+
+        XCTAssertEqual(group.tabs.count, 2, "Agent A 작업 후 Agent B 작업 요청 시 별도의 신규 터미널 탭이 생성되어야 합니다.")
+        XCTAssertEqual(group.tabs[0].preset, .antigravity)
+        XCTAssertEqual(group.tabs[1].preset, .claude)
+        XCTAssertEqual(group.activeTabId, group.tabs[1].id, "새로 생성된 Agent B 탭이 활성 탭으로 전환되어야 합니다.")
+    }
+
+    func testBusyTabSpawnsNewTabForConcurrentExecution() {
+        let group = manager.getOrCreateGroup(for: 999, name: "TestRepo", localPath: "/tmp")
+
+        // 탭 1 실행 및 busy 상태 시뮬레이션
+        manager.executeCommand(command: "echo 'Task 1'", repositoryId: 999, name: "TestRepo", localPath: "/tmp", preset: .claude)
+        group.activeTab?.isRunning = true
+
+        // 탭 1이 실행 중인 상태에서 다시 Claude 작업 요청
+        manager.executeCommand(command: "echo 'Task 2'", repositoryId: 999, name: "TestRepo", localPath: "/tmp", preset: .claude)
+
+        XCTAssertEqual(group.tabs.count, 2, "기존 탭이 실행 중인 경우 충돌 방지를 위해 새 탭이 생성되어야 합니다.")
+        XCTAssertEqual(group.activeTabId, group.tabs[1].id)
+    }
+
+    func testCloseTabAndFallback() {
+        let group = manager.getOrCreateGroup(for: 999, name: "TestRepo", localPath: "/tmp")
+        let tab2 = group.createTab(preset: .codex)
+        XCTAssertEqual(group.tabs.count, 2)
+        XCTAssertEqual(group.activeTabId, tab2.id)
+
+        // 탭 2 닫기
+        group.closeTab(id: tab2.id)
+        XCTAssertEqual(group.tabs.count, 1)
+        XCTAssertEqual(group.activeTabId, group.tabs[0].id)
+
+        // 마지막 탭 닫기 -> 새로운 기본 탭 자동 생성
+        group.closeTab(id: group.tabs[0].id)
+        XCTAssertEqual(group.tabs.count, 1)
+        XCTAssertEqual(group.tabs[0].title, "터미널")
+    }
+}

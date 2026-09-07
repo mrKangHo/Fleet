@@ -206,8 +206,8 @@ public struct MemoTimelineView: View {
                         Button(action: {
                             Task { await viewModel.executeBatchTask(preset: nil) }
                         }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "sparkles")
+                            HStack(spacing: 5) {
+                                Image(systemName: viewModel.defaultAIPreset.iconName)
                                     .font(.system(size: 11, weight: .bold))
                                 Text("선택한 \(viewModel.selectedMemoIds.count)개 작업수행 (\(viewModel.defaultAIPreset.shortName))")
                                     .font(.system(size: 11, weight: .bold))
@@ -245,12 +245,13 @@ public struct MemoTimelineView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
-                .background(Color.accentColor.opacity(0.12))
-                .cornerRadius(9)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 9)
-                        .stroke(Color.accentColor.opacity(0.35), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(0.08), radius: 6, y: 3)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
 
@@ -505,7 +506,7 @@ public struct ModernMemoCardView: View {
                         // 1. 기본 AI로 즉시 실행
                         Button(action: { onExecuteTask(nil) }) {
                             HStack(spacing: 4) {
-                                Image(systemName: "sparkles")
+                                Image(systemName: defaultPreset.iconName)
                                     .font(.system(size: 11, weight: .bold))
                                 Text("작업수행 (\(defaultPreset.shortName))")
                                     .font(.system(size: 11, weight: .semibold))
@@ -547,7 +548,7 @@ public struct ModernMemoCardView: View {
         .padding(12)
         .glassCard(cornerRadius: 10, isHovered: isHovered)
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
         )
         .opacity(memo.isCompleted ? 0.78 : 1.0)
@@ -560,24 +561,35 @@ public struct ModernMemoCardView: View {
 
     private func priorityPill(_ priority: MemoItem.Priority) -> some View {
         Text(priority.rawValue)
-            .font(.system(size: 9, weight: .bold))
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(priorityColor(priority).opacity(0.12))
+            .font(.system(size: 9, weight: .bold, design: .rounded))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2.5)
+            .background(priorityColor(priority).opacity(0.14))
             .foregroundColor(priorityColor(priority))
             .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .strokeBorder(priorityColor(priority).opacity(0.25), lineWidth: 0.6)
+            )
     }
 
     private func statusPill(_ status: MemoItem.Status) -> some View {
         HStack(spacing: 3) {
+            Circle()
+                .fill(statusColor(status))
+                .frame(width: 4, height: 4)
             Text(status.rawValue)
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 9, weight: .semibold, design: .rounded))
         }
-        .padding(.horizontal, 5)
-        .padding(.vertical, 2)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2.5)
         .background(statusColor(status).opacity(0.12))
         .foregroundColor(statusColor(status))
         .clipShape(Capsule())
+        .overlay(
+            Capsule()
+                .strokeBorder(statusColor(status).opacity(0.25), lineWidth: 0.6)
+        )
     }
 
     private func statusColor(_ status: MemoItem.Status) -> Color {

@@ -1,11 +1,34 @@
 import SwiftUI
 
-/// Apple HIG 디자인 가이드라인 기반 테마 및 비주얼 토큰
+/// Apple HIG 디자인 가이드라인 기반 테마 및 비주얼 토큰 (Apple Design Award 수준의 완성도)
 public enum AppTheme {
-    // MARK: - Vibrant Colors
+    // MARK: - Vibrant Colors (macOS Pro Dark/Light System Tint)
     public static let activeGreen = Color(red: 0.18, green: 0.80, blue: 0.44)
     public static let warningAmber = Color(red: 0.95, green: 0.61, blue: 0.07)
     public static let staleRose = Color(red: 0.94, green: 0.28, blue: 0.35)
+    public static let subtleBlue = Color(red: 0.20, green: 0.55, blue: 0.95)
+    public static let royalPurple = Color(red: 0.60, green: 0.35, blue: 0.95)
+
+    // MARK: - Subtle Gradients
+    public static let activeGradient = LinearGradient(
+        colors: [Color(red: 0.18, green: 0.82, blue: 0.48), Color(red: 0.10, green: 0.65, blue: 0.35)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    public static let warningGradient = LinearGradient(
+        colors: [Color(red: 0.98, green: 0.65, blue: 0.12), Color(red: 0.88, green: 0.48, blue: 0.05)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    public static let staleGradient = LinearGradient(
+        colors: [Color(red: 0.96, green: 0.32, blue: 0.40), Color(red: 0.82, green: 0.18, blue: 0.28)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    // MARK: - Springs & Micro-interactions
+    public static let fluidSpring = Animation.spring(response: 0.32, dampingFraction: 0.82)
+    public static let quickSpring = Animation.spring(response: 0.22, dampingFraction: 0.78)
 
     // MARK: - GitHub Language Colors
     public static func languageColor(for language: String?) -> Color {
@@ -57,7 +80,7 @@ public enum AppTheme {
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 
-    // MARK: - Glass Card Modifier
+    // MARK: - Glass Card Modifier (Apple Continuous Squircle + Dual Specular Stroke)
     public struct GlassCard: ViewModifier {
         var cornerRadius: CGFloat = 12
         var isHovered: Bool = false
@@ -65,17 +88,52 @@ public enum AppTheme {
         public func body(content: Content) -> some View {
             content
                 .background(.ultraThinMaterial)
-                .cornerRadius(cornerRadius)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(
-                            isHovered
-                                ? Color.accentColor.opacity(0.4)
-                                : Color.primary.opacity(0.08),
-                            lineWidth: isHovered ? 1.5 : 1
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(isHovered ? 0.22 : 0.10),
+                                    Color.white.opacity(isHovered ? 0.08 : 0.03),
+                                    Color.black.opacity(0.08)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: isHovered ? 1.2 : 0.8
                         )
                 )
-                .shadow(color: Color.black.opacity(isHovered ? 0.08 : 0.03), radius: isHovered ? 8 : 4, y: 2)
+                .shadow(
+                    color: Color.black.opacity(isHovered ? 0.12 : 0.04),
+                    radius: isHovered ? 10 : 5,
+                    x: 0,
+                    y: isHovered ? 4 : 2
+                )
+        }
+    }
+}
+
+// MARK: - AIAgentPreset Brand Colors
+extension AppSettings.AIAgentPreset {
+    public var brandColor: Color {
+        switch self {
+        case .antigravity:
+            return Color(red: 0.42, green: 0.58, blue: 1.00) // Antigravity Indigo
+        case .claude:
+            return Color(red: 0.96, green: 0.54, blue: 0.32) // Claude Terracotta
+        case .codex:
+            return Color(red: 0.20, green: 0.82, blue: 0.58) // OpenAI Mint
+        case .cursor:
+            return Color(red: 0.28, green: 0.68, blue: 0.98) // Cursor Cyan
+        case .aider:
+            return Color(red: 0.98, green: 0.74, blue: 0.20) // Aider Gold
+        case .goose:
+            return Color(red: 0.96, green: 0.38, blue: 0.55) // Goose Pink
+        case .openhands:
+            return Color(red: 0.22, green: 0.78, blue: 0.76) // OpenHands Teal
+        case .custom:
+            return Color.accentColor
         }
     }
 }

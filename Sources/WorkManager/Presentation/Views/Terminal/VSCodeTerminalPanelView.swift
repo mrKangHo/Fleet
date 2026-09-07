@@ -4,14 +4,14 @@ import SwiftTerm
 
 /// SwiftTerm LocalProcessTerminalView를 SwiftUI에 임베딩하는 Representable
 public struct SwiftUITerminalView: NSViewRepresentable {
-    @ObservedObject var session: RepositoryTerminalSession
+    @ObservedObject var tab: TerminalTabItem
 
-    public init(session: RepositoryTerminalSession) {
-        self.session = session
+    public init(tab: TerminalTabItem) {
+        self.tab = tab
     }
 
     public func makeNSView(context: Context) -> LocalProcessTerminalView {
-        return session.terminalView
+        return tab.terminalView
     }
 
     public func updateNSView(_ nsView: LocalProcessTerminalView, context: Context) {
@@ -19,9 +19,9 @@ public struct SwiftUITerminalView: NSViewRepresentable {
     }
 }
 
-/// VS Code 감성의 하단 내장 터미널 패널 뷰
+/// VS Code & Apple HIG 감성의 하단 내장 다중 탭 터미널 패널 뷰
 public struct VSCodeTerminalPanelView: View {
-    @ObservedObject var session: RepositoryTerminalSession
+    @ObservedObject var group: RepositoryTerminalGroup
     let repository: RepositoryItem
     let localPath: String?
     let onChooseFolder: () -> Void
@@ -30,15 +30,16 @@ public struct VSCodeTerminalPanelView: View {
     @ObservedObject private var terminalManager = TerminalSessionManager.shared
     @State private var isDragging = false
     @State private var showCopiedDir = false
+    @State private var hoveredTabId: UUID? = nil
 
     public init(
-        session: RepositoryTerminalSession,
+        group: RepositoryTerminalGroup,
         repository: RepositoryItem,
         localPath: String?,
         onChooseFolder: @escaping () -> Void,
         onOpenExternal: @escaping () -> Void
     ) {
-        self.session = session
+        self.group = group
         self.repository = repository
         self.localPath = localPath
         self.onChooseFolder = onChooseFolder
@@ -47,10 +48,10 @@ public struct VSCodeTerminalPanelView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            // MARK: - 1. 상단 리사이즈 드래그 핸들 (VS Code 스타일)
+            // MARK: - 1. 상단 리사이즈 드래그 핸들
             resizeHandle
 
-            // MARK: - 2. VS Code 스타일 탭 & 툴바 헤더
+            // MARK: - 2. 다중 탭 & 툴바 헤더 (VS Code + Apple HIG)
             panelHeader
 
             // MARK: - 3. 로컬 폴더 미연결 경고 바 (필요 시)
@@ -58,10 +59,14 @@ public struct VSCodeTerminalPanelView: View {
                 folderWarningBar
             }
 
-            // MARK: - 4. SwiftTerm 터미널 본체
-            SwiftUITerminalView(session: session)
-                .id(session.id)
-                .background(Color(nsColor: NSColor(calibratedRed: 0.11, green: 0.12, blue: 0.15, alpha: 1.0)))
+            // MARK: - 4. SwiftTerm 터미널 본체 (활성 탭 렌더링)
+            if let activeTab = group.activeTab {
+                SwiftUITerminalView(tab: activeTab)
+                    .id(activeTab.id)
+                    .background(Color(nsColor: NSColor(calibratedRed: 0.11, green: 0.12, blue: 0.15, alpha: 1.0)))
+            } else {
+                emptyTabsPlaceholder
+            }
         }
         .background(Color(nsColor: NSColor(calibratedRed: 0.11, green: 0.12, blue: 0.15, alpha: 1.0)))
         .overlay(
@@ -90,7 +95,7 @@ public struct VSCodeTerminalPanelView: View {
                     .onChanged { value in
                         isDragging = true
                         let newHeight = terminalManager.panelHeight - value.translation.height
-                        terminalManager.panelHeight = min(max(newHeight, 140), 560)
+                        terminalManager.panelHeight = min(max(newHeight, 140), 620)
                     }
                     .onEnded { _ in
                         isDragging = false
@@ -98,49 +103,27 @@ public struct VSCodeTerminalPanelView: View {
             )
     }
 
-    // MARK: - 패널 헤더
+    // MARK: - 패널 헤더 (다중 탭 바 + 툴바 액션)
     private var panelHeader: some View {
-        HStack(spacing: 10) {
-            // 터미널 탭 라벨 (VS Code 스타일)
-            HStack(spacing: 6) {
-                Image(systemName: "terminal.fill")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.accentColor)
-
-                Text("터미널")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.primary)
-
-                // 저장소 태그
+        HStack(spacing: 8) {
+            // 좌측: 탭 리스트 (가로 스크롤 가능)
+            ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
-                    Circle()
-                        .fill(session.isRunning ? AppTheme.activeGreen : AppTheme.staleRose)
-                        .frame(width: 6, height: 6)
+                    ForEach(group.tabs) { tab in
+                        tabPill(for: tab)
+                    }
 
-                    Text(repository.name)
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.secondary)
+                    // 새 터미널 탭 추가 버튼 (+)
+                    newTabMenuButton
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color.white.opacity(0.06))
-                .cornerRadius(4)
-
-                // 셸 타입 뱃지
-                Text("zsh")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1.5)
-                    .background(Color.secondary.opacity(0.15))
-                    .cornerRadius(3)
+                .padding(.vertical, 3)
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
-            // 작업 디렉토리 표시 (클릭 시 복사)
+            // 우측: 작업 디렉토리 경로 (클릭 시 복사)
             Button(action: {
-                let path = session.workingDirectory
+                let path = group.workingDirectory
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(path, forType: .string)
                 showCopiedDir = true
@@ -153,13 +136,17 @@ public struct VSCodeTerminalPanelView: View {
                         .font(.system(size: 9))
                         .foregroundColor(showCopiedDir ? AppTheme.activeGreen : .secondary)
 
-                    Text(showCopiedDir ? "경로 복사됨!" : session.workingDirectory)
+                    Text(showCopiedDir ? "경로 복사됨!" : group.workingDirectory)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                        .frame(maxWidth: 240)
+                        .frame(maxWidth: 200)
                 }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color.white.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
             }
             .buttonStyle(.plain)
             .help("작업 디렉토리 경로 복사")
@@ -168,15 +155,15 @@ public struct VSCodeTerminalPanelView: View {
                 .frame(height: 12)
 
             // 툴바 액션 버튼들
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 // 화면 지우기 (Clear)
                 headerButton(icon: "trash", tooltip: "터미널 화면 지우기 (clear)") {
-                    session.clear()
+                    group.activeTab?.clear()
                 }
 
                 // 셸 세션 재시작
-                headerButton(icon: "arrow.clockwise", tooltip: "터미널 세션 재시작") {
-                    session.restart()
+                headerButton(icon: "arrow.clockwise", tooltip: "현재 터미널 재시작") {
+                    group.activeTab?.restart()
                 }
 
                 // 외부 터미널 앱으로 열기
@@ -189,22 +176,155 @@ public struct VSCodeTerminalPanelView: View {
                     icon: terminalManager.isMaximized ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
                     tooltip: terminalManager.isMaximized ? "패널 크기 원래대로" : "패널 최대화"
                 ) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppTheme.fluidSpring) {
                         terminalManager.isMaximized.toggle()
                     }
                 }
 
                 // 패널 닫기 (접기)
                 headerButton(icon: "xmark", tooltip: "터미널 패널 닫기 (⌃~)") {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(AppTheme.fluidSpring) {
                         terminalManager.isPanelVisible = false
                     }
                 }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(Color(nsColor: NSColor(calibratedRed: 0.14, green: 0.15, blue: 0.18, alpha: 1.0)))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Color(nsColor: NSColor(calibratedRed: 0.13, green: 0.14, blue: 0.17, alpha: 1.0)))
+    }
+
+    // MARK: - 개별 탭 버튼 (Apple Pro Max Tab Pill)
+    private func tabPill(for tab: TerminalTabItem) -> some View {
+        let isActive = group.activeTabId == tab.id
+        let isHovered = hoveredTabId == tab.id
+        let brandColor = tab.preset?.brandColor ?? Color.accentColor
+
+        return Button(action: {
+            withAnimation(AppTheme.quickSpring) {
+                group.selectTab(id: tab.id)
+            }
+        }) {
+            HStack(spacing: 5) {
+                // 에이전트 / 셸 고유 아이콘
+                Image(systemName: tab.preset?.iconName ?? "terminal.fill")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(isActive ? brandColor : brandColor.opacity(0.7))
+
+                // 탭 이름
+                Text(tab.title)
+                    .font(.system(size: 11, weight: isActive ? .bold : .medium))
+                    .foregroundColor(isActive ? .primary : .secondary)
+
+                // 실행 상태 인디케이터 (초록 발광 점 또는 종료 표시)
+                if tab.isRunning {
+                    Circle()
+                        .fill(AppTheme.activeGreen)
+                        .frame(width: 5, height: 5)
+                        .shadow(color: AppTheme.activeGreen.opacity(0.8), radius: 2)
+                } else if let code = tab.exitCode, code != 0 {
+                    Circle()
+                        .fill(AppTheme.staleRose)
+                        .frame(width: 5, height: 5)
+                }
+
+                // 탭 닫기 버튼 (✕)
+                Button(action: {
+                    withAnimation(AppTheme.quickSpring) {
+                        group.closeTab(id: tab.id)
+                    }
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .frame(width: 14, height: 14)
+                        .background(Color.white.opacity(isHovered || isActive ? 0.1 : 0.0))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help("탭 닫기")
+                .opacity(isActive || isHovered || group.tabs.count > 1 ? 1.0 : 0.0)
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(
+                isActive
+                    ? Color.white.opacity(0.12)
+                    : (isHovered ? Color.white.opacity(0.06) : Color.white.opacity(0.02))
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(
+                        isActive
+                            ? brandColor.opacity(0.5)
+                            : Color.white.opacity(0.06),
+                        lineWidth: isActive ? 1.0 : 0.5
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            hoveredTabId = hovering ? tab.id : nil
+        }
+    }
+
+    // MARK: - 새 탭 생성 (+) 분할 메뉴 버튼
+    private var newTabMenuButton: some View {
+        Menu {
+            Button(action: {
+                withAnimation(AppTheme.quickSpring) {
+                    _ = group.createTab(preset: nil, autoSelect: true)
+                }
+            }) {
+                Label("새 터미널 (기본 zsh)", systemImage: "terminal.fill")
+            }
+
+            Divider()
+
+            Text("새 AI 에이전트 탭:")
+                .font(.caption)
+
+            ForEach(AppSettings.AIAgentPreset.allCases) { preset in
+                Button(action: {
+                    withAnimation(AppTheme.quickSpring) {
+                        _ = group.createTab(preset: preset, autoSelect: true)
+                    }
+                }) {
+                    Label(preset.rawValue, systemImage: preset.iconName)
+                }
+            }
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.secondary)
+                .frame(width: 22, height: 22)
+                .background(Color.white.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("새 터미널 탭 추가")
+    }
+
+    // MARK: - 탭이 없는 경우의 플레이스홀더
+    private var emptyTabsPlaceholder: some View {
+        VStack(spacing: 8) {
+            Spacer()
+            Image(systemName: "terminal")
+                .font(.system(size: 28))
+                .foregroundColor(.secondary.opacity(0.5))
+            Text("열려있는 터미널 탭이 없습니다.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Button("새 터미널 열기") {
+                _ = group.createTab()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - 로컬 폴더 미연결 경고 바
@@ -236,7 +356,9 @@ public struct VSCodeTerminalPanelView: View {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.secondary)
-                .frame(width: 20, height: 20)
+                .frame(width: 22, height: 22)
+                .background(Color.white.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -3,24 +3,43 @@ import SwiftUI
 import AppKit
 import SwiftTerm
 
-/// 각 저장소별 독립 터미널 세션 모델
-public final class RepositoryTerminalSession: ObservableObject, Identifiable, LocalProcessTerminalViewDelegate {
-    public let id: Int // repositoryId
+/// 단일 터미널 탭 아이템 모델 (독립된 PTY 세션)
+public final class TerminalTabItem: ObservableObject, Identifiable, LocalProcessTerminalViewDelegate {
+    public let id: UUID
+    public let repositoryId: Int
     public let repositoryName: String
     public var workingDirectory: String
     public let terminalView: LocalProcessTerminalView
     public let createdAt: Date
 
     @Published public var title: String
+    @Published public var preset: AppSettings.AIAgentPreset?
     @Published public var isRunning: Bool = false
     @Published public var exitCode: Int32? = nil
+    @Published public var hasExecutedTask: Bool = false
 
-    public init(repositoryId: Int, repositoryName: String, workingDirectory: String) {
-        self.id = repositoryId
+    public init(
+        id: UUID = UUID(),
+        repositoryId: Int,
+        repositoryName: String,
+        workingDirectory: String,
+        preset: AppSettings.AIAgentPreset? = nil,
+        customTitle: String? = nil
+    ) {
+        self.id = id
+        self.repositoryId = repositoryId
         self.repositoryName = repositoryName
         self.workingDirectory = workingDirectory
+        self.preset = preset
         self.createdAt = Date()
-        self.title = repositoryName
+
+        if let custom = customTitle, !custom.isEmpty {
+            self.title = custom
+        } else if let p = preset {
+            self.title = p.shortName
+        } else {
+            self.title = "터미널"
+        }
 
         let options = TerminalOptions.default
         let view = LocalProcessTerminalView(frame: .zero, options: options)
@@ -109,12 +128,17 @@ public final class RepositoryTerminalSession: ObservableObject, Identifiable, Lo
         startShell()
     }
 
+    public func terminate() {
+        terminalView.terminate()
+        isRunning = false
+    }
+
     // MARK: - LocalProcessTerminalViewDelegate
     public func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {}
 
     public func setTerminalTitle(source: LocalProcessTerminalView, title: String) {
         DispatchQueue.main.async {
-            if !title.isEmpty {
+            if !title.isEmpty && self.preset == nil {
                 self.title = title
             }
         }
@@ -136,52 +160,159 @@ public final class RepositoryTerminalSession: ObservableObject, Identifiable, Lo
     }
 }
 
-/// 앱 내 모든 저장소의 터미널 세션을 총괄 관리하는 싱글톤 매니저
+/// 하위 호환성을 위한 Typealias
+public typealias RepositoryTerminalSession = TerminalTabItem
+
+/// 특정 저장소에 속한 다중 터미널 탭 그룹
+public final class RepositoryTerminalGroup: ObservableObject, Identifiable {
+    public let id: Int // repositoryId
+    public let repositoryName: String
+    public var workingDirectory: String
+
+    @Published public var tabs: [TerminalTabItem] = []
+    @Published public var activeTabId: UUID?
+
+    public init(repositoryId: Int, repositoryName: String, workingDirectory: String) {
+        self.id = repositoryId
+        self.repositoryName = repositoryName
+        self.workingDirectory = workingDirectory
+    }
+
+    public var activeTab: TerminalTabItem? {
+        if let id = activeTabId, let tab = tabs.first(where: { $0.id == id }) {
+            return tab
+        }
+        return tabs.first
+    }
+
+    public var isAnyTabRunning: Bool {
+        tabs.contains { $0.isRunning }
+    }
+
+    @discardableResult
+    public func createTab(preset: AppSettings.AIAgentPreset? = nil, customTitle: String? = nil, autoSelect: Bool = true) -> TerminalTabItem {
+        let countForPreset = tabs.filter { $0.preset == preset }.count
+        let finalTitle: String
+        if let custom = customTitle {
+            finalTitle = custom
+        } else if let p = preset {
+            finalTitle = countForPreset > 0 ? "\(p.shortName) \(countForPreset + 1)" : p.shortName
+        } else {
+            let zshCount = tabs.filter { $0.preset == nil }.count
+            finalTitle = zshCount > 0 ? "터미널 \(zshCount + 1)" : "터미널"
+        }
+
+        let newTab = TerminalTabItem(
+            repositoryId: id,
+            repositoryName: repositoryName,
+            workingDirectory: workingDirectory,
+            preset: preset,
+            customTitle: finalTitle
+        )
+
+        tabs.append(newTab)
+        if autoSelect || activeTabId == nil {
+            activeTabId = newTab.id
+        }
+        return newTab
+    }
+
+    public func closeTab(id: UUID) {
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        let tabToClose = tabs[index]
+        tabToClose.terminate()
+        tabs.remove(at: index)
+
+        if activeTabId == id {
+            if index < tabs.count {
+                activeTabId = tabs[index].id
+            } else if let last = tabs.last {
+                activeTabId = last.id
+            } else {
+                let fresh = createTab()
+                activeTabId = fresh.id
+            }
+        }
+    }
+
+    public func selectTab(id: UUID) {
+        if tabs.contains(where: { $0.id == id }) {
+            activeTabId = id
+        }
+    }
+
+    public func updateWorkingDirectoryIfNeeded(_ newPath: String) {
+        self.workingDirectory = newPath
+        for tab in tabs {
+            tab.updateWorkingDirectoryIfNeeded(newPath)
+        }
+    }
+}
+
+/// 앱 내 모든 저장소의 다중 터미널 세션을 총괄 관리하는 싱글톤 매니저
 public final class TerminalSessionManager: ObservableObject, @unchecked Sendable {
     public static let shared = TerminalSessionManager()
 
     @Published public var isPanelVisible: Bool = false
-    @Published public var panelHeight: CGFloat = 260
+    @Published public var panelHeight: CGFloat = 270
     @Published public var isMaximized: Bool = false
     @Published public var activeRepositoryId: Int? = nil
 
-    private var sessions: [Int: RepositoryTerminalSession] = [:]
+    private var groups: [Int: RepositoryTerminalGroup] = [:]
     private let lock = NSLock()
 
     public init() {}
 
-    public func getOrCreateSession(for repositoryId: Int, name: String, localPath: String?) -> RepositoryTerminalSession {
+    public func getOrCreateGroup(for repositoryId: Int, name: String, localPath: String?) -> RepositoryTerminalGroup {
         lock.lock()
         defer { lock.unlock() }
 
         let resolvedPath = localPath ?? "~/Documents"
 
-        if let existing = sessions[repositoryId] {
+        if let existing = groups[repositoryId] {
             if let path = localPath {
                 existing.updateWorkingDirectoryIfNeeded(path)
+            }
+            if existing.tabs.isEmpty {
+                _ = existing.createTab()
             }
             return existing
         }
 
-        let newSession = RepositoryTerminalSession(
+        let newGroup = RepositoryTerminalGroup(
             repositoryId: repositoryId,
             repositoryName: name,
             workingDirectory: resolvedPath
         )
-        sessions[repositoryId] = newSession
-        return newSession
+        // 기본 터미널 탭 생성
+        _ = newGroup.createTab()
+        groups[repositoryId] = newGroup
+        return newGroup
     }
 
+    public func group(for repositoryId: Int) -> RepositoryTerminalGroup? {
+        lock.lock()
+        defer { lock.unlock() }
+        return groups[repositoryId]
+    }
+
+    /// 하위 호환성 메서드 (기존 단일 세션 반환)
+    public func getOrCreateSession(for repositoryId: Int, name: String, localPath: String?) -> RepositoryTerminalSession {
+        let grp = getOrCreateGroup(for: repositoryId, name: name, localPath: localPath)
+        return grp.activeTab ?? grp.createTab()
+    }
+
+    /// 하위 호환성 메서드
     public func session(for repositoryId: Int) -> RepositoryTerminalSession? {
         lock.lock()
         defer { lock.unlock() }
-        return sessions[repositoryId]
+        return groups[repositoryId]?.activeTab
     }
 
     public func togglePanel(for repositoryId: Int? = nil, name: String? = nil, localPath: String? = nil) {
         if let repoId = repositoryId, let repoName = name {
             activeRepositoryId = repoId
-            _ = getOrCreateSession(for: repoId, name: repoName, localPath: localPath)
+            _ = getOrCreateGroup(for: repoId, name: repoName, localPath: localPath)
         }
         withAnimation(.easeInOut(duration: 0.2)) {
             isPanelVisible.toggle()
@@ -190,19 +321,55 @@ public final class TerminalSessionManager: ObservableObject, @unchecked Sendable
 
     public func openPanel(for repositoryId: Int, name: String, localPath: String?) {
         activeRepositoryId = repositoryId
-        _ = getOrCreateSession(for: repositoryId, name: name, localPath: localPath)
+        _ = getOrCreateGroup(for: repositoryId, name: name, localPath: localPath)
         withAnimation(.easeInOut(duration: 0.2)) {
             isPanelVisible = true
         }
     }
 
-    public func executeCommand(command: String, repositoryId: Int, name: String, localPath: String?) {
-        let session = getOrCreateSession(for: repositoryId, name: name, localPath: localPath)
+    /// AI 에이전트 작업 실행 라우팅:
+    /// 첫번째 작업을 A agent로 실행하다가 B agent로 신규 작업을 실행하거나,
+    /// 현재 활성 탭이 이미 작업 중(isRunning)이거나 다른 프리셋일 경우 **새로운 탭을 자동 생성**하여 실행합니다.
+    public func executeCommand(
+        command: String,
+        repositoryId: Int,
+        name: String,
+        localPath: String?,
+        preset: AppSettings.AIAgentPreset? = nil
+    ) {
+        let group = getOrCreateGroup(for: repositoryId, name: name, localPath: localPath)
         openPanel(for: repositoryId, name: name, localPath: localPath)
+
+        let targetTab: TerminalTabItem
+        if let current = group.activeTab {
+            // 새 탭 생성 조건:
+            // 1. 현재 탭이 백그라운드에서 실행 중(isRunning)인 경우
+            // 2. 현재 탭의 preset이 설정되어 있고, 이번 요청 preset과 다른 경우 (A agent 작업 후 B agent 작업 시 새 탭)
+            // 3. 현재 탭이 이미 어떤 에이전트 작업을 수행한 적이 있고(hasExecutedTask), 이번 요청 프리셋과 불일치하는 경우
+            if current.isRunning {
+                targetTab = group.createTab(preset: preset, autoSelect: true)
+            } else if let currentPreset = current.preset, let newPreset = preset, currentPreset != newPreset {
+                targetTab = group.createTab(preset: newPreset, autoSelect: true)
+            } else if current.hasExecutedTask && current.preset != preset {
+                targetTab = group.createTab(preset: preset, autoSelect: true)
+            } else {
+                // 기존 유휴 탭 재사용
+                if let p = preset {
+                    current.preset = p
+                    current.title = p.shortName
+                }
+                targetTab = current
+            }
+        } else {
+            targetTab = group.createTab(preset: preset, autoSelect: true)
+        }
+
+        targetTab.hasExecutedTask = true
+        group.activeTabId = targetTab.id
 
         let fileManager = FileManager.default
         let home = fileManager.homeDirectoryForCurrentUser.path
-        let targetPath = localPath ?? session.workingDirectory
+        let targetPath = localPath ?? targetTab.workingDirectory
         let resolved = targetPath.replacingOccurrences(of: "~", with: home)
         let escapedDir = resolved.replacingOccurrences(of: "'", with: "'\\''")
 
@@ -213,16 +380,18 @@ public final class TerminalSessionManager: ObservableObject, @unchecked Sendable
             } else {
                 fullCommand = command
             }
-            session.sendCommand(fullCommand)
-            session.terminalView.window?.makeFirstResponder(session.terminalView)
+            targetTab.sendCommand(fullCommand)
+            targetTab.terminalView.window?.makeFirstResponder(targetTab.terminalView)
         }
     }
 
     public func closeSession(for repositoryId: Int) {
         lock.lock()
         defer { lock.unlock() }
-        if let s = sessions.removeValue(forKey: repositoryId) {
-            s.terminalView.terminate()
+        if let grp = groups.removeValue(forKey: repositoryId) {
+            for tab in grp.tabs {
+                tab.terminate()
+            }
         }
     }
 }

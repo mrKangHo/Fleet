@@ -98,16 +98,34 @@ public struct RepositoryDetailView: View {
                                         Button(action: {
                                             terminalManager.togglePanel(for: repo.id, name: repo.name, localPath: viewModel.localDirectoryPath)
                                         }) {
-                                            HStack(spacing: 4) {
+                                            HStack(spacing: 5) {
                                                 Image(systemName: "terminal.fill")
                                                     .foregroundColor(terminalManager.isPanelVisible ? .accentColor : .secondary)
                                                 Text("터미널")
                                                     .font(.system(size: 11, weight: .medium))
+
+                                                if let grp = terminalManager.group(for: repo.id) {
+                                                    if grp.isAnyTabRunning {
+                                                        Circle()
+                                                            .fill(AppTheme.activeGreen)
+                                                            .frame(width: 6, height: 6)
+                                                            .shadow(color: AppTheme.activeGreen.opacity(0.8), radius: 2)
+                                                    }
+                                                    if grp.tabs.count > 1 {
+                                                        Text("\(grp.tabs.count)")
+                                                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                                                            .padding(.horizontal, 4)
+                                                            .padding(.vertical, 1)
+                                                            .background(Color.accentColor.opacity(0.18))
+                                                            .foregroundColor(.accentColor)
+                                                            .clipShape(Capsule())
+                                                    }
+                                                }
                                             }
                                         }
                                         .buttonStyle(.bordered)
                                         .controlSize(.small)
-                                        .help("하단 터미널 열기/닫기 (⌃~)")
+                                        .help("하단 터미널 패널 열기/닫기 (⌃~)")
 
                                         Link(destination: repo.htmlUrl) {
                                             HStack(spacing: 4) {
@@ -327,13 +345,13 @@ public struct RepositoryDetailView: View {
 
                     // MARK: - VS Code 스타일 하단 터미널 패널
                     if terminalManager.isPanelVisible {
-                        let session = terminalManager.getOrCreateSession(
+                        let group = terminalManager.getOrCreateGroup(
                             for: repo.id,
                             name: repo.name,
                             localPath: viewModel.localDirectoryPath
                         )
                         VSCodeTerminalPanelView(
-                            session: session,
+                            group: group,
                             repository: repo,
                             localPath: viewModel.localDirectoryPath,
                             onChooseFolder: { viewModel.chooseLocalFolder() },
@@ -373,7 +391,11 @@ public struct RepositoryDetailView: View {
 
     // MARK: - VS Code Style Bottom Status Bar
     private func bottomStatusBar(for repo: RepositoryItem) -> some View {
-        HStack(spacing: 12) {
+        let grp = terminalManager.group(for: repo.id)
+        let isAnyRunning = grp?.isAnyTabRunning ?? false
+        let tabCount = grp?.tabs.count ?? 0
+
+        return HStack(spacing: 12) {
             // 터미널 토글 버튼
             Button(action: {
                 terminalManager.togglePanel(for: repo.id, name: repo.name, localPath: viewModel.localDirectoryPath)
@@ -388,13 +410,19 @@ public struct RepositoryDetailView: View {
                         .foregroundColor(terminalManager.isPanelVisible ? .primary : .secondary)
 
                     Circle()
-                        .fill(terminalManager.session(for: repo.id)?.isRunning == true ? AppTheme.activeGreen : Color.secondary.opacity(0.4))
+                        .fill(isAnyRunning ? AppTheme.activeGreen : Color.secondary.opacity(0.4))
                         .frame(width: 5, height: 5)
+
+                    if tabCount > 1 {
+                        Text("\(tabCount)")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(terminalManager.isPanelVisible ? Color.accentColor.opacity(0.15) : Color.clear)
-                .cornerRadius(4)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
             }
             .buttonStyle(.plain)
             .keyboardShortcut("`", modifiers: .control)
@@ -408,6 +436,20 @@ public struct RepositoryDetailView: View {
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
             }
             .foregroundColor(.secondary)
+
+            // 기본 AI 에이전트 프리셋 뱃지
+            HStack(spacing: 4) {
+                Image(systemName: viewModel.defaultAIPreset.iconName)
+                    .font(.system(size: 10))
+                    .foregroundColor(viewModel.defaultAIPreset.brandColor)
+                Text(viewModel.defaultAIPreset.shortName)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.primary.opacity(0.04))
+            .clipShape(Capsule())
 
             Spacer()
 

@@ -235,7 +235,8 @@ public final class RepositoryDetailViewModel: ObservableObject {
                     command: command,
                     repositoryId: repo.id,
                     name: repo.name,
-                    localPath: validPath
+                    localPath: validPath,
+                    preset: activePreset
                 )
 
                 var updatedMemo = memo
@@ -326,7 +327,8 @@ public final class RepositoryDetailViewModel: ObservableObject {
                     command: command,
                     repositoryId: repo.id,
                     name: repo.name,
-                    localPath: validPath
+                    localPath: validPath,
+                    preset: activePreset
                 )
 
                 let now = Date()
