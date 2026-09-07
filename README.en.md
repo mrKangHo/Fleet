@@ -8,9 +8,13 @@
   <a href="README.md">🇰🇷 한국어</a> | <b>🇺🇸 English</b> | <a href="README.ja.md">🇯🇵 日本語</a> | <a href="README.zh.md">🇨🇳 中文</a>
 </p>
 
-> **A native macOS app for tracking GitHub repository neglect and managing update-idea memos**
+> **A native macOS app that manages your GitHub repositories by last commit date, keeps memos of what to do next, and hands that work straight to the AI agent you already use**
 
-Fleet pulls in all of your GitHub repositories, tracks the days elapsed since the last commit (`D+XX`), and lets you jot down the next feature or idea to build for each repository — all built on a Clean Architecture foundation.
+Fleet does three things.
+
+1. **Track repositories by last commit date** — pulls in all your GitHub repositories, tracks how many days have passed since the last commit (`D+XX`), and surfaces the most neglected ones first.
+2. **Jot down what's next** — leave a memo (backlog item) per repository for the next thing to fix or build.
+3. **Hand it to your AI, instantly** — click a memo and your existing AI agent CLI (Claude Code, Codex, Aider, etc.) starts working on it in a terminal, already scoped to that repository.
 
 <p align="center">
   <img src="docs/screenshot.png" width="900" alt="Fleet app screenshot" />
@@ -20,43 +24,28 @@ Fleet pulls in all of your GitHub repositories, tracks the days elapsed since th
 
 ## 🌟 Key Features
 
-1. **Full GitHub Repository Sync**
-   - Fetches all public/private repositories via a Personal Access Token (PAT)
-   - Real-time lookup of the latest commit/push date and commit message
-   - Displays language, star count, fork count, and open issue count
-2. **Repository Selection & List Editing (NEW ⭐️)**
-   - **Initial Repository Wizard**: when repositories are first fetched, a sheet pops up letting you check exactly which ones to manage/track
-   - **Edit anytime**: use the **`[Edit List]`** button at the top of the sidebar to re-check/uncheck the managed repository list at any time
-   - **Right-click context menu**: right-click any repository to instantly **"Exclude this repository from monitoring (hide)"** or **"Re-include in monitoring"**
-   - Repositories excluded from management are fully excluded from the Dock badge count and system notifications, avoiding noisy alerts
-3. **Stale-Day & Risk Visualization**
-   - 🟢 **Active**: recently active
-   - 🟡 **Warning**: past the configured warning period (14 days by default)
-   - 🔴 **Stale**: past the configured stale period (30 days by default, shown with a `D+XX` badge)
-4. **Per-Repository Update Memos & Roadmap Management**
-   - Click a repository in the sidebar to see its memo history on the right
-   - Quick inline memo creation (title, details, priority)
-   - Memo completion checkbox and delete support
-   - Safely persisted as JSON in the local `Application Support` directory
-5. **One-Click AI Agent CLI Task Execution (NEW 🚀)**
-   - Clicking **`[ 🚀 Run Task (AI) ]`** on a memo card opens a terminal with your configured AI Agent CLI (Google `agy`, `claude`, `aider`, etc.) and starts the task automatically
-   - Automatically detects the local repository folder, with manual folder linking supported
-   - Automatically assembles a smart prompt combining the repository name, language, branch, and memo title/content
-   - One-click copy of the AI prompt to the clipboard
-   - Tracks memo status from `Pending` → `In Progress 🚀` in real time, recording the last run timestamp
-6. **Native macOS Integration (Dock Badge & System Notifications)**
-   - Shows the total count of stale repositories past the configured threshold (30 days by default) as a **macOS Dock icon badge**
-   - System banner notification when a repository becomes stale
-7. **Preferences (Cmd + ,)**
-   - Register a GitHub Personal Access Token and test the connection live
-   - Choose an AI Agent CLI preset (`agy`, `claude`, `aider`, custom) and configure its template
-   - Sliders for the stale/warning threshold days
-   - On/off toggles for the Dock badge and system notifications
-   - Filtering options for archived and forked repositories
-8. **Multi-language Support (i18n, NEW 🌐)**
-   - Full support for Korean / English / Japanese / Chinese (Simplified)
-   - Choose the app's display language independently of the system language, from Preferences > General
-   - A "System Language" option is also available, which follows the macOS system language
+### 1. Track repositories by last commit date
+- **Full GitHub Repository Sync**: fetches all public/private repositories via a Personal Access Token (PAT), with real-time latest commit/push date, commit message, language, stars, forks, and open issues
+- **Stale-Day & Risk Visualization**: 🟢 Active · 🟡 Warning (past 14 days by default) · 🔴 Stale (past 30 days by default, shown with a `D+XX` badge) at a glance
+- **Repository Selection & List Editing**: check exactly which repositories to track when they're first fetched, then adjust anytime via the sidebar's **`[Edit List]`** button or right-click ("Exclude/Re-include in monitoring"). Excluded repositories are fully left out of the Dock badge and notifications too
+
+### 2. Memos for what's next (Update Backlog)
+- Click a repository in the sidebar to see its memo (to-do) history on the right
+- Quick inline memo creation with title, details, and priority (Low/Medium/High)
+- Manage progress (Pending → In Progress → Done) in a Kanban board or list view, with completion checkboxes and delete
+- Safely persisted as JSON in the local `Application Support` directory — nothing sent to an external server
+
+### 3. Hand tasks to your AI agent, instantly
+- One click on **`[ 🚀 Run Task (AI) ]`** on a memo card launches your configured AI Agent CLI (Claude Code, Codex, Google Antigravity (`agy`), Cursor, Aider, Goose, OpenHands, or a custom CLI) in a terminal, right in that repository's local folder
+- Automatically assembles a prompt combining the repository name, language, branch, and memo title/content (clipboard copy also supported)
+- Automatically detects the local repository folder, with manual folder linking supported
+- Once started, the memo status flips from `Pending` → `In Progress 🚀` in real time, recording the last run timestamp
+
+### Extras
+- **Native macOS integration**: shows the count of stale repositories as a Dock icon badge, with a system banner notification when one becomes stale
+- **Menu bar widget**: check stale status and add a quick memo without opening the main window
+- **Preferences (Cmd + ,)**: register/test your GitHub token, pick an AI Agent CLI preset and template, tune the stale/warning threshold sliders, toggle the Dock badge and notifications, filter archived/forked repositories
+- **Multi-language support (i18n)**: full Korean / English / Japanese / Chinese (Simplified) support, selectable independently of the system language in Preferences
 
 ---
 
