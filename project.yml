@@ -1,4 +1,4 @@
-name: WorkManager
+name: Fleet
 options:
   bundleIdPrefix: com.workmanager
   deploymentTarget:
@@ -19,17 +19,17 @@ settings:
     CODE_SIGNING_ALLOWED: NO
 
 targets:
-  WorkManager:
+  Fleet:
     type: application
     platform: macOS
     deploymentTarget: "14.0"
     sources:
-      - path: Sources/WorkManager
+      - path: Sources/Fleet
     dependencies:
       - package: SwiftTerm
     settings:
       base:
-        PRODUCT_NAME: WorkManager
+        PRODUCT_NAME: Fleet
         PRODUCT_BUNDLE_IDENTIFIER: com.workmanager.macos
         INFOPLIST_FILE: Support/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: ""
@@ -38,17 +38,17 @@ targets:
           - "$(inherited)"
           - "@executable_path/../Frameworks"
 
-  WorkManagerTests:
+  FleetTests:
     type: bundle.unit-test
     platform: macOS
     deploymentTarget: "14.0"
     sources:
-      - path: Tests/WorkManagerTests
+      - path: Tests/FleetTests
     dependencies:
-      - target: WorkManager
+      - target: Fleet
     settings:
       base:
-        PRODUCT_NAME: WorkManagerTests
+        PRODUCT_NAME: FleetTests
         PRODUCT_BUNDLE_IDENTIFIER: com.workmanager.macos.tests
         LD_RUNPATH_SEARCH_PATHS:
           - "$(inherited)"

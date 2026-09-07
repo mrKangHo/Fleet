@@ -23,7 +23,7 @@ xcuserdata/
 *.xcodeproj/xcuserdata/
 
 # App bundle
-WorkManager.app/
+Fleet.app/
 
 # Swift Package Manager
 .build/

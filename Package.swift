@@ -2,14 +2,15 @@
 import PackageDescription
 
 let package = Package(
-    name: "WorkManager",
+    name: "Fleet",
+    defaultLocalization: "ko",
     platforms: [
         .macOS(.v14)
     ],
     products: [
         .executable(
-            name: "WorkManager",
-            targets: ["WorkManager"]
+            name: "Fleet",
+            targets: ["Fleet"]
         )
     ],
     dependencies: [
@@ -17,19 +18,22 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "WorkManager",
+            name: "Fleet",
             dependencies: [
                 .product(name: "SwiftTerm", package: "SwiftTerm")
             ],
-            path: "Sources/WorkManager",
+            path: "Sources/Fleet",
+            resources: [
+                .process("Resources")
+            ],
             swiftSettings: [
                 .swiftLanguageMode(.v5)
             ]
         ),
         .testTarget(
-            name: "WorkManagerTests",
-            dependencies: ["WorkManager"],
-            path: "Tests/WorkManagerTests"
+            name: "FleetTests",
+            dependencies: ["Fleet"],
+            path: "Tests/FleetTests"
         )
     ]
 )

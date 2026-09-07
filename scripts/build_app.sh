@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-APP_NAME="WorkManager"
+APP_NAME="Fleet"
 BUNDLE_DIR="$APP_NAME.app"
 CONTENTS_DIR="$BUNDLE_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
@@ -25,6 +25,23 @@ if [ -f "StitchDesigns/AppIcon.icns" ]; then
     cp "StitchDesigns/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 fi
 
+# 다국어 지원: SwiftPM 리소스 번들 내부의 *.lproj를 앱 번들 최상위로 끌어올려
+# Bundle.main 기본 지역화 조회(SwiftUI Text 등)가 바로 찾을 수 있도록 함
+for bundle_dir in "$RESOURCES_DIR"/*.bundle; do
+    [ -d "$bundle_dir" ] || continue
+    for lproj_dir in "$bundle_dir"/*.lproj; do
+        [ -d "$lproj_dir" ] || continue
+        lproj_name=$(basename "$lproj_dir")
+        # zh-hans.lproj -> zh-Hans.lproj 로 표준 대소문자 보정
+        case "$lproj_name" in
+            zh-hans.lproj) lproj_name="zh-Hans.lproj" ;;
+            zh-hant.lproj) lproj_name="zh-Hant.lproj" ;;
+        esac
+        mkdir -p "$RESOURCES_DIR/$lproj_name"
+        cp -r "$lproj_dir"/. "$RESOURCES_DIR/$lproj_name/"
+    done
+done
+
 # Info.plist 생성
 cat <<EOF > "$CONTENTS_DIR/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -41,6 +58,15 @@ cat <<EOF > "$CONTENTS_DIR/Info.plist"
     <string>$APP_NAME</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>ko</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>ko</string>
+        <string>en</string>
+        <string>ja</string>
+        <string>zh-Hans</string>
+    </array>
     <key>CFBundleShortVersionString</key>
     <string>1.0.0</string>
     <key>CFBundleVersion</key>
@@ -52,7 +78,7 @@ cat <<EOF > "$CONTENTS_DIR/Info.plist"
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSAppleEventsUsageDescription</key>
-    <string>WorkManager는 외부 터미널(Terminal.app, iTerm2 등)을 열어 AI 에이전트 작업을 자동 실행하기 위해 권한이 필요합니다.</string>
+    <string>Fleet는 외부 터미널(Terminal.app, iTerm2 등)을 열어 AI 에이전트 작업을 자동 실행하기 위해 권한이 필요합니다.</string>
 </dict>
 </plist>
 EOF

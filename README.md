@@ -1,7 +1,20 @@
-# WorkManager (macOS)
+<p align="center">
+  <img src="docs/icon.png" width="120" alt="Fleet 앱 아이콘" />
+</p>
+
+<h1 align="center">Fleet (macOS)</h1>
+
+<p align="center">
+  <b>🇰🇷 한국어</b> | <a href="README.en.md">🇺🇸 English</a> | <a href="README.ja.md">🇯🇵 日本語</a> | <a href="README.zh.md">🇨🇳 中文</a>
+</p>
+
 > **GitHub 저장소 방치일 추적 및 업데이트 기능 메모 관리 macOS 네이티브 앱**
 
-WorkManager는 GitHub의 모든 저장소를 가져와 마지막 커밋 기준 경과 일수(`D+XX`)를 추적하고, 각 저장소별로 다음에 업데이트할 기능과 아이디어를 메모할 수 있는 클린 아키텍처 기반의 macOS 앱입니다.
+Fleet는 GitHub의 모든 저장소를 가져와 마지막 커밋 기준 경과 일수(`D+XX`)를 추적하고, 각 저장소별로 다음에 업데이트할 기능과 아이디어를 메모할 수 있는 클린 아키텍처 기반의 macOS 앱입니다.
+
+<p align="center">
+  <img src="docs/screenshot.png" width="900" alt="Fleet 앱 스크린샷" />
+</p>
 
 ---
 
@@ -40,54 +53,76 @@ WorkManager는 GitHub의 모든 저장소를 가져와 마지막 커밋 기준 �
    - 방치/주의 판정 기준일 슬라이더
    - Dock 뱃지 및 시스템 알림 On/Off 토글
    - 보관된 저장소(Archived) 및 포크(Fork) 필터링 옵션
+7. **다국어 지원 (i18n, NEW 🌐)**
+   - 한국어 / English / 日本語 / 中文(简体) 4개 언어 완전 지원
+   - 환경설정 > 일반 탭에서 시스템 언어와 무관하게 앱 표시 언어를 직접 선택 가능
+   - macOS 시스템 언어를 그대로 따르는 "시스템 언어" 옵션도 지원
 
 ---
 
 ## 🏛️ 클린 아키텍처 (Clean Architecture) 설계
 
-WorkManager는 관심사 분리와 테스트 용이성을 극대화하기 위해 클린 아키텍처 3계층을 엄격히 준수합니다.
+Fleet는 관심사 분리와 테스트 용이성을 극대화하기 위해 클린 아키텍처 3계층을 엄격히 준수합니다.
 
 ```
-Sources/WorkManager/
+Sources/Fleet/
 ├── App/
-│   ├── WorkManagerApp.swift           # 앱 진입점
-│   └── AppEnvironment.swift           # DI (의존성 주입) 컨테이너
-├── Domain/                             # 순수 비즈니스 로직 (외부 종속성 없음)
+│   ├── FleetApp.swift           # 앱 진입점 (WindowGroup + MenuBarExtra)
+│   └── AppEnvironment.swift           # DI (의존성 주입) 컨테이너 — 오직 여기서만 Data 구현체를 조립
+├── Domain/                             # 순수 비즈니스 로직 (외부 프레임워크/Data/Presentation 종속성 없음)
 │   ├── Entities/
 │   │   ├── RepositoryItem.swift       # 저장소 엔티티
 │   │   ├── MemoItem.swift             # 메모 엔티티
 │   │   ├── StaleStatus.swift          # 방치 상태 및 D+day 뱃지 계산
-│   │   └── AppSettings.swift          # 앱 환경설정 엔티티
-│   ├── Repositories/                  # 프로토콜 인터페이스
+│   │   ├── AppSettings.swift          # 앱 환경설정 엔티티
+│   │   └── AppLanguage.swift          # 표시 언어 엔티티 (System/ko/en/ja/zh-Hans)
+│   ├── Repositories/                  # 프로토콜 인터페이스 (경계, Data가 구현)
 │   │   ├── GitHubRepositoryProtocol.swift
 │   │   ├── MemoRepositoryProtocol.swift
-│   │   └── SettingsRepositoryProtocol.swift
-│   └── UseCases/                      # 유스케이스
+│   │   ├── SettingsRepositoryProtocol.swift
+│   │   ├── LocalPathRepositoryProtocol.swift
+│   │   └── TerminalExecutionServiceProtocol.swift
+│   └── UseCases/                      # 유스케이스 (프로토콜만 주입받는 순수 로직)
 │       ├── FetchRepositoriesUseCase.swift
 │       ├── CalculateStaleStatusUseCase.swift
 │       ├── ManageMemoUseCase.swift
+│       ├── ExecuteAgentTaskUseCase.swift
 │       ├── UpdateDockBadgeUseCase.swift
 │       └── ScheduleNotificationUseCase.swift
-├── Data/                              # 통신 및 영속성 구현체
+├── Data/                              # 통신 및 영속성 구현체 (Domain 프로토콜을 구현)
 │   ├── DataSources/
-│   │   ├── GitHub/ (GitHubAPIService, DTOs)
+│   │   ├── GitHub/ (GitHubAPIService, GitHubDTOs)
 │   │   ├── Persistence/ (LocalMemoStorage Actor)
-│   │   └── System/ (DockBadgeManager, NotificationManager)
+│   │   └── System/ (DockBadgeManager, NotificationManager, TerminalExecutionService)
 │   └── Repositories/
 │       ├── GitHubRepositoryImpl.swift
 │       ├── MemoRepositoryImpl.swift
-│       └── SettingsRepositoryImpl.swift
-└── Presentation/                      # SwiftUI + MVVM
-    ├── ViewModels/
-    │   ├── RepositoryListViewModel.swift
-    │   ├── RepositoryDetailViewModel.swift
-    │   └── SettingsViewModel.swift
-    └── Views/
-        ├── MainSplitView.swift        # 2단 Split Layout
-        ├── Sidebar/ (SidebarView, RepositoryRowView)
-        ├── Detail/ (RepositoryDetailView, MemoTimelineView)
-        └── Settings/ (SettingsView)
+│       ├── SettingsRepositoryImpl.swift
+│       └── LocalPathRepositoryImpl.swift
+├── Presentation/                      # SwiftUI + MVVM — Domain의 UseCase/Protocol만 참조
+│   ├── ViewModels/
+│   │   ├── RepositoryListViewModel.swift
+│   │   ├── RepositoryDetailViewModel.swift
+│   │   ├── MenuBarViewModel.swift      # 메뉴바 팝오버 전용 상태/로직 (View에서 UseCase 직접 호출 금지)
+│   │   ├── SettingsViewModel.swift
+│   │   └── TerminalSessionManager.swift
+│   ├── Theme/ (AppTheme — 색상/스프링 애니메이션/버튼 스타일 토큰)
+│   └── Views/
+│       ├── MainSplitView.swift        # 2단 Split Layout + 상단 내비게이션 바
+│       ├── MenuBar/ (MenuBarExtraView)
+│       ├── Sidebar/ (SidebarView, RepositoryRowView, RepositorySelectionSheet)
+│       ├── Detail/ (RepositoryDetailView, MemoTimelineView, MemoDetailModalView, FileTreeSidebarView)
+│       ├── Dashboard/ (RepoHealthDashboardView, AgentWorkflowsView, CliEnvironmentsView)
+│       ├── Terminal/ (VSCodeTerminalPanelView)
+│       └── Settings/ (SettingsView)
+└── Resources/                         # 다국어 리소스
+    ├── ko.lproj/Localizable.strings
+    ├── en.lproj/Localizable.strings
+    ├── ja.lproj/Localizable.strings
+    └── zh-Hans.lproj/Localizable.strings
 ```
+
+**의존성 규칙 (Dependency Rule) 검증**: `Presentation`과 `Data`는 오직 `Domain`의 Entity/UseCase/Protocol만 바라보며, 서로를 직접 참조하지 않습니다. Data 구현체(`GitHubRepositoryImpl` 등)는 `App/AppEnvironment.swift` 한 곳에서만 조립되어 주입되고, View는 절대 이를 직접 인스턴스화하지 않습니다.
 
 ---
 
@@ -95,7 +130,7 @@ Sources/WorkManager/
 
 ### 1. Xcode로 프로젝트 열기 (추천)
 ```bash
-open WorkManager.xcodeproj
+open Fleet.xcodeproj
 ```
 
 ### 2. 테스트 실행
@@ -106,7 +141,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift test
 ### 3. macOS App 번들 빌드 및 직접 실행
 ```bash
 ./scripts/build_app.sh
-open WorkManager.app
+open Fleet.app
 ```
 
 ---
