@@ -75,8 +75,34 @@ public struct RepositoryDetailView: View {
 
                                     Spacer()
 
-                                    // Quick Actions (GitHub 열기, Clone URL 복사)
-                                    HStack(spacing: 8) {
+                                    // Quick Actions (VS Code, Cursor, Clone URL 복사, 터미널, GitHub 열기)
+                                    HStack(spacing: 7) {
+                                        // 1. VS Code 열기
+                                        Button(action: { viewModel.openInVSCode() }) {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                                                    .font(.system(size: 10, weight: .semibold))
+                                                Text("VS Code")
+                                                    .font(.system(size: 11, weight: .medium))
+                                            }
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .help("로컬 프로젝트 폴더를 VS Code에서 열기")
+
+                                        // 2. Cursor 열기
+                                        Button(action: { viewModel.openInCursor() }) {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "sparkles")
+                                                    .font(.system(size: 10, weight: .semibold))
+                                                Text("Cursor")
+                                                    .font(.system(size: 11, weight: .medium))
+                                            }
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .help("로컬 프로젝트 폴더를 Cursor에서 열기")
+
                                         Button(action: {
                                             NSPasteboard.general.clearContents()
                                             NSPasteboard.general.setString("https://github.com/\(repo.fullName).git", forType: .string)

@@ -116,14 +116,18 @@ public final class RepositoryDetailViewModel: ObservableObject {
         target.isCompleted.toggle()
         target.updatedAt = Date()
         // 1. 낙관적 UI 갱신 (지연 없는 60fps 애니메이션)
-        self.memos[index] = target
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+            self.memos[index] = target
+        }
 
         do {
             try await environment.manageMemoUseCase.updateMemo(target)
         } catch {
             // 실패 시 롤백
             if let rollbackIndex = memos.firstIndex(where: { $0.id == memo.id }) {
-                memos[rollbackIndex] = original
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    memos[rollbackIndex] = original
+                }
             }
             self.errorMessage = "상태 변경 실패: \(error.localizedDescription)"
         }
@@ -135,13 +139,17 @@ public final class RepositoryDetailViewModel: ObservableObject {
         var target = original
         target.status = newStatus
         target.updatedAt = Date()
-        self.memos[index] = target
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+            self.memos[index] = target
+        }
 
         do {
             try await environment.manageMemoUseCase.updateMemo(target)
         } catch {
             if let rollbackIndex = memos.firstIndex(where: { $0.id == memo.id }) {
-                memos[rollbackIndex] = original
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    memos[rollbackIndex] = original
+                }
             }
             self.errorMessage = "상태 변경 실패: \(error.localizedDescription)"
         }
@@ -153,13 +161,17 @@ public final class RepositoryDetailViewModel: ObservableObject {
         var target = original
         target.priority = newPriority
         target.updatedAt = Date()
-        self.memos[index] = target
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+            self.memos[index] = target
+        }
 
         do {
             try await environment.manageMemoUseCase.updateMemo(target)
         } catch {
             if let rollbackIndex = memos.firstIndex(where: { $0.id == memo.id }) {
-                memos[rollbackIndex] = original
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    memos[rollbackIndex] = original
+                }
             }
             self.errorMessage = "우선순위 변경 실패: \(error.localizedDescription)"
         }
@@ -246,6 +258,48 @@ public final class RepositoryDetailViewModel: ObservableObject {
 
         if panel.runModal() == .OK, let url = panel.url {
             setLocalDirectoryPath(url.path)
+        }
+    }
+
+    public func openInVSCode() {
+        guard let path = localDirectoryPath else {
+            chooseLocalFolder()
+            guard let newPath = localDirectoryPath else { return }
+            openPath(newPath, appName: "Visual Studio Code")
+            return
+        }
+        openPath(path, appName: "Visual Studio Code")
+    }
+
+    public func openInCursor() {
+        guard let path = localDirectoryPath else {
+            chooseLocalFolder()
+            guard let newPath = localDirectoryPath else { return }
+            openPath(newPath, appName: "Cursor")
+            return
+        }
+        openPath(path, appName: "Cursor")
+    }
+
+    public func openInFinder() {
+        guard let path = localDirectoryPath else {
+            chooseLocalFolder()
+            guard let newPath = localDirectoryPath else { return }
+            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: newPath)
+            return
+        }
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
+    }
+
+    private func openPath(_ path: String, appName: String) {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        task.arguments = ["-a", appName, path]
+        do {
+            try task.run()
+            self.successMessage = "[\(appName)]에서 프로젝트 폴더를 열었습니다."
+        } catch {
+            self.errorMessage = "\(appName) 실행 실패: \(error.localizedDescription)"
         }
     }
 
