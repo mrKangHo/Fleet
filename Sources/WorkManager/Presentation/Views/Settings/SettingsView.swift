@@ -212,13 +212,15 @@ public struct SettingsView: View {
                         .fontWeight(.semibold)
                         .foregroundColor(.secondary)
 
+                    Spacer()
+
                     Picker("", selection: $viewModel.settings.terminalApp) {
                         ForEach(AppSettings.TerminalApp.allCases, id: \.self) { app in
                             Text(app.rawValue).tag(app)
                         }
                     }
                     .pickerStyle(.menu)
-                    .frame(width: 160)
+                    .frame(minWidth: 230)
                 }
 
                 Divider()
