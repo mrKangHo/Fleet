@@ -248,7 +248,7 @@ public final class RepositoryDetailViewModel: ObservableObject {
             if let index = memos.firstIndex(where: { $0.id == memo.id }) {
                 memos[index] = updatedMemo
             }
-            self.successMessage = "[\(settings.terminalApp.shortName)] 내장 터미널에서 [\(activePreset.shortName)] 작업을 시작했습니다!"
+            self.successMessage = "내장 터미널에서 [\(activePreset.shortName)] 작업을 시작했습니다!"
         } catch {
             self.errorMessage = "작업 실행 실패: \(error.localizedDescription)"
         }
@@ -328,7 +328,7 @@ public final class RepositoryDetailViewModel: ObservableObject {
                 }
             }
 
-            self.successMessage = "[\(settings.terminalApp.shortName)] 내장 터미널에서 선택한 \(targets.count)개 항목에 대해 [\(activePreset.shortName)] 작업을 시작했습니다!"
+            self.successMessage = "내장 터미널에서 선택한 \(targets.count)개 항목에 대해 [\(activePreset.shortName)] 작업을 시작했습니다!"
         } catch {
             self.errorMessage = "일괄 작업 실행 실패: \(error.localizedDescription)"
         }

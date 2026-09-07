@@ -205,35 +205,6 @@ public struct SettingsView: View {
 
                 Divider()
 
-                // 내장 터미널 테마 및 프로필 스타일
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("내장 터미널 테마 및 프로필 스타일:")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
-
-                        Spacer()
-
-                        Picker("", selection: $viewModel.settings.terminalApp) {
-                            ForEach(AppSettings.TerminalApp.allCases, id: \.self) { app in
-                                Text(app.rawValue).tag(app)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .frame(minWidth: 230)
-                        .onChange(of: viewModel.settings.terminalApp) { _, _ in
-                            viewModel.save()
-                        }
-                    }
-
-                    Text("하단 내장 터미널의 색상 테마, 폰트(Menlo/SF Mono), 커서 및 환경변수(TERM_PROGRAM)를 선택한 스타일로 적용하여 모든 AI 작업을 앱 내에서 직접 수행합니다.")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                }
-
-                Divider()
-
                 // 기본 로컬 프로젝트 폴더
                 VStack(alignment: .leading, spacing: 4) {
                     Text("기본 로컬 저장소 탐색 경로:")
