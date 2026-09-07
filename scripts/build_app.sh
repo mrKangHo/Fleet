@@ -21,6 +21,9 @@ chmod +x "$MACOS_DIR/$APP_NAME"
 
 # 리소스 번들 복사 (SwiftTerm 등)
 cp -r .build/release/*.bundle "$RESOURCES_DIR/" 2>/dev/null || true
+if [ -f "StitchDesigns/AppIcon.icns" ]; then
+    cp "StitchDesigns/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
+fi
 
 # Info.plist 생성
 cat <<EOF > "$CONTENTS_DIR/Info.plist"
@@ -30,6 +33,8 @@ cat <<EOF > "$CONTENTS_DIR/Info.plist"
 <dict>
     <key>CFBundleExecutable</key>
     <string>$APP_NAME</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>com.workmanager.macos</string>
     <key>CFBundleName</key>

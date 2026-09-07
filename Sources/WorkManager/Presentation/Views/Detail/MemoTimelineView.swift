@@ -9,20 +9,10 @@ public struct MemoTimelineView: View {
     @State private var targetedColumnStatus: MemoItem.Status? = nil
     @State private var memoFilter: MemoFilter = .all
     @State private var isCreatingExpanded = false
+    @State private var selectedMemoForDetail: MemoItem? = nil
     @FocusState private var isTitleFocused: Bool
 
-    public enum MemoViewMode: String, CaseIterable, Identifiable {
-        case kanban = "칸반"
-        case list = "리스트"
-
-        public var id: String { rawValue }
-        public var iconName: String {
-            switch self {
-            case .kanban: return "rectangle.split.3x1"
-            case .list: return "list.bullet"
-            }
-        }
-    }
+    public typealias MemoViewMode = WorkManager.MemoViewMode
 
     public enum MemoFilter: String, CaseIterable, Identifiable {
         case all = "전체"
@@ -72,6 +62,31 @@ public struct MemoTimelineView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: viewMode)
+        .sheet(item: $selectedMemoForDetail) { memo in
+            MemoDetailModalView(
+                memo: Binding(
+                    get: { selectedMemoForDetail ?? memo },
+                    set: { selectedMemoForDetail = $0 }
+                ),
+                repositoryName: viewModel.repository?.name ?? "Repository",
+                defaultPreset: viewModel.defaultAIPreset,
+                onSave: { updated in
+                    Task { await viewModel.updateMemo(updated) }
+                },
+                onExecuteTask: { preset, prompt in
+                    Task { await viewModel.executeTask(for: memo, preset: preset) }
+                },
+                onDelete: {
+                    Task {
+                        let newCount = await viewModel.deleteMemo(id: memo.id)
+                        onMemoCountChanged?(newCount)
+                    }
+                },
+                onClose: {
+                    selectedMemoForDetail = nil
+                }
+            )
+        }
     }
 
     // MARK: - Subviews
@@ -480,6 +495,9 @@ public struct MemoTimelineView: View {
                                     let newCount = await viewModel.deleteMemo(id: memo.id)
                                     onMemoCountChanged?(newCount)
                                 }
+                            },
+                            onOpenDetail: {
+                                selectedMemoForDetail = memo
                             }
                         )
                     }
@@ -653,6 +671,9 @@ public struct MemoTimelineView: View {
                                         let newCount = await viewModel.deleteMemo(id: memo.id)
                                         onMemoCountChanged?(newCount)
                                     }
+                                },
+                                onOpenDetail: {
+                                    selectedMemoForDetail = memo
                                 }
                             )
                             .draggable(memo.id.uuidString)
@@ -729,6 +750,7 @@ public struct ModernMemoCardView: View {
     public let onExecuteTask: (AppSettings.AIAgentPreset?) -> Void
     public let onCopyPrompt: () -> Void
     public let onDelete: () -> Void
+    public var onOpenDetail: (() -> Void)? = nil
 
     @State private var isHovered = false
     @State private var isEditing = false
@@ -813,9 +835,19 @@ public struct ModernMemoCardView: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary.opacity(0.7))
 
-                            // 액션 버튼 그룹 (편집, 삭제)
+                            // 액션 버튼 그룹 (상세, 편집, 삭제)
                             if isHovered {
                                 HStack(spacing: 6) {
+                                    if let onOpenDetail = onOpenDetail {
+                                        Button(action: onOpenDetail) {
+                                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help("상세 모달 열기")
+                                    }
+
                                     Button(action: {
                                         editedTitle = memo.title
                                         editedContent = memo.content
@@ -1084,6 +1116,7 @@ public struct KanbanMemoCardView: View {
     public let onExecuteTask: (AppSettings.AIAgentPreset?) -> Void
     public let onCopyPrompt: () -> Void
     public let onDelete: () -> Void
+    public var onOpenDetail: (() -> Void)? = nil
 
     @State private var isHovered = false
     @State private var isEditing = false
@@ -1130,6 +1163,16 @@ public struct KanbanMemoCardView: View {
 
                 if isHovered {
                     HStack(spacing: 4) {
+                        if let onOpenDetail = onOpenDetail {
+                            Button(action: onOpenDetail) {
+                                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("상세 모달 열기")
+                        }
+
                         Button(action: {
                             editedTitle = memo.title
                             editedContent = memo.content

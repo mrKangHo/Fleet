@@ -11,15 +11,37 @@ public struct SidebarView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            // MARK: - 상단 검색 및 인터랙티브 통계 필터 바
+            // MARK: - 상단 헤더 & 검색 & 인터랙티브 통계 필터 바
             VStack(spacing: 10) {
-                // 검색창
+                // Stitch 스타일 상단 헤더: Repositories + Count Pill
+                HStack {
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder.fill.badge.gearshape")
+                            .font(.system(size: 14))
+                            .foregroundColor(.accentColor)
+                        Text("Repositories")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                    }
+
+                    Spacer()
+
+                    Text("\(viewModel.repositories.count) Repos")
+                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2.5)
+                        .background(Color.accentColor.opacity(0.14))
+                        .foregroundColor(.accentColor)
+                        .clipShape(Capsule())
+                }
+                .padding(.top, 4)
+
+                // 검색창 (Stitch: Filter repositories...)
                 HStack(spacing: 7) {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
                         .font(.system(size: 13))
 
-                    TextField("저장소, 언어, 설명 검색...", text: $viewModel.searchQuery)
+                    TextField("Filter repositories...", text: $viewModel.searchQuery)
                         .textFieldStyle(.plain)
                         .font(.system(size: 13))
 
@@ -95,30 +117,11 @@ public struct SidebarView: View {
 
                 // 정렬 옵션 및 저장소 관리 버튼 바
                 HStack {
-                    Text("\(viewModel.filteredRepositories.count)개 저장소")
+                    Text("\(viewModel.filteredRepositories.count)개 표시 중")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
 
                     Spacer()
-
-                    // 저장소 관리 목록 수정 버튼
-                    Button(action: {
-                        viewModel.isSelectionSheetPresented = true
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "checklist")
-                                .font(.system(size: 10))
-                            Text("목록 수정")
-                                .font(.system(size: 11))
-                        }
-                        .foregroundColor(.accentColor)
-                    }
-                    .buttonStyle(.plain)
-                    .help("관리할 저장소 선택 및 수정")
-
-                    Text("•")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary.opacity(0.5))
 
                     Menu {
                         ForEach(RepositoryListViewModel.SortOption.allCases) { sort in
@@ -250,32 +253,81 @@ public struct SidebarView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(selection: $viewModel.selectedRepositoryId) {
-                    ForEach(viewModel.filteredRepositories) { repo in
-                        let status = viewModel.staleStatus(for: repo)
-                        let isMonitored = viewModel.currentSettings.isRepoMonitored(repo.id)
-                        RepositoryRowView(repository: repo, status: status)
-                            .tag(repo.id)
-                            .contextMenu {
-                                if isMonitored {
-                                    Button(role: .destructive, action: {
-                                        viewModel.ignoreRepository(repoId: repo.id)
-                                    }) {
-                                        Label("이 저장소 모니터링 제외 (숨기기)", systemImage: "eye.slash")
-                                    }
-                                } else {
-                                    Button(action: {
-                                        viewModel.restoreRepository(repoId: repo.id)
-                                    }) {
-                                        Label("다시 모니터링 목록에 포함", systemImage: "plus.circle")
-                                    }
+                    if viewModel.selectedFilter == .all && viewModel.searchQuery.isEmpty {
+                        // Stitch 섹션 그룹화 렌더링
+                        if !staleOrWarningRepos.isEmpty {
+                            Section {
+                                ForEach(staleOrWarningRepos) { repo in
+                                    repoRow(repo)
                                 }
-                                Divider()
-                                Button(action: {
-                                    viewModel.isSelectionSheetPresented = true
-                                }) {
-                                    Label("관리 저장소 목록 전체 편집...", systemImage: "checklist")
+                            } header: {
+                                HStack(spacing: 5) {
+                                    Text("⚠️ 방치 주의 (STALE)")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(AppTheme.staleRose)
+                                    Spacer()
+                                    Text("\(staleOrWarningRepos.count)")
+                                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1)
+                                        .background(AppTheme.staleRose.opacity(0.16))
+                                        .foregroundColor(AppTheme.staleRose)
+                                        .clipShape(Capsule())
                                 }
+                                .padding(.vertical, 2)
                             }
+                        }
+
+                        if !activeRepos.isEmpty {
+                            Section {
+                                ForEach(activeRepos) { repo in
+                                    repoRow(repo)
+                                }
+                            } header: {
+                                HStack(spacing: 5) {
+                                    Text("🟢 최근 활동 (ACTIVE)")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(AppTheme.activeGreen)
+                                    Spacer()
+                                    Text("\(activeRepos.count)")
+                                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1)
+                                        .background(AppTheme.activeGreen.opacity(0.16))
+                                        .foregroundColor(AppTheme.activeGreen)
+                                        .clipShape(Capsule())
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+
+                        if !otherRepos.isEmpty {
+                            Section {
+                                ForEach(otherRepos) { repo in
+                                    repoRow(repo)
+                                }
+                            } header: {
+                                HStack(spacing: 5) {
+                                    Text("📦 전체 저장소 (ALL REPOS)")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text("\(otherRepos.count)")
+                                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1)
+                                        .background(Color.primary.opacity(0.08))
+                                        .foregroundColor(.secondary)
+                                        .clipShape(Capsule())
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    } else {
+                        // 검색/필터 적용 시 플랫 목록 렌더링
+                        ForEach(viewModel.filteredRepositories) { repo in
+                            repoRow(repo)
+                        }
                     }
                 }
                 .listStyle(.sidebar)
@@ -283,8 +335,8 @@ public struct SidebarView: View {
 
             Divider()
 
-            // MARK: - 하단 글래스 툴바
-            HStack(spacing: 10) {
+            // MARK: - 하단 글래스 툴바 (Stitch Style: + Add Repo & Settings)
+            HStack(spacing: 8) {
                 if let user = viewModel.authenticatedUser {
                     HStack(spacing: 6) {
                         Circle()
@@ -299,6 +351,7 @@ public struct SidebarView: View {
                         Text(user)
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.primary)
+                            .lineLimit(1)
                     }
                 } else {
                     Text("미연동 상태")
@@ -307,6 +360,25 @@ public struct SidebarView: View {
                 }
 
                 Spacer()
+
+                // + Add Repo (저장소 목록 추가/수정) 버튼
+                Button(action: {
+                    viewModel.isSelectionSheetPresented = true
+                }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("Add Repo")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Color.accentColor.opacity(0.12))
+                    .foregroundColor(.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("관리할 저장소 추가 및 편집")
 
                 if viewModel.isLoading {
                     ProgressView()
@@ -339,6 +411,61 @@ public struct SidebarView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(.ultraThinMaterial)
+        }
+    }
+
+    // MARK: - Helper Views & Properties
+    @ViewBuilder
+    private func repoRow(_ repo: RepositoryItem) -> some View {
+        let status = viewModel.staleStatus(for: repo)
+        let isMonitored = viewModel.currentSettings.isRepoMonitored(repo.id)
+        RepositoryRowView(repository: repo, status: status)
+            .tag(repo.id)
+            .contextMenu {
+                if isMonitored {
+                    Button(role: .destructive, action: {
+                        viewModel.ignoreRepository(repoId: repo.id)
+                    }) {
+                        Label("이 저장소 모니터링 제외 (숨기기)", systemImage: "eye.slash")
+                    }
+                } else {
+                    Button(action: {
+                        viewModel.restoreRepository(repoId: repo.id)
+                    }) {
+                        Label("다시 모니터링 목록에 포함", systemImage: "plus.circle")
+                    }
+                }
+                Divider()
+                Button(action: {
+                    viewModel.isSelectionSheetPresented = true
+                }) {
+                    Label("관리 저장소 목록 전체 편집...", systemImage: "checklist")
+                }
+            }
+    }
+
+    private var staleOrWarningRepos: [RepositoryItem] {
+        viewModel.filteredRepositories.filter { repo in
+            let s = viewModel.staleStatus(for: repo)
+            if case .stale = s { return true }
+            if case .warning = s { return true }
+            return false
+        }
+    }
+
+    private var activeRepos: [RepositoryItem] {
+        viewModel.filteredRepositories.filter { repo in
+            let s = viewModel.staleStatus(for: repo)
+            if case .active = s { return true }
+            return false
+        }
+    }
+
+    private var otherRepos: [RepositoryItem] {
+        viewModel.filteredRepositories.filter { repo in
+            let s = viewModel.staleStatus(for: repo)
+            if case .unknown = s { return true }
+            return false
         }
     }
 

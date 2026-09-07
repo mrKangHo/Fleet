@@ -5,6 +5,27 @@ public struct MainSplitView: View {
     @StateObject private var detailViewModel: RepositoryDetailViewModel
     @State private var isSettingsPresented = false
 
+    public enum NavigationTab: String, CaseIterable, Identifiable {
+        case kanban = "Kanban Tasks"
+        case repoHealth = "Repo Health"
+        case workflows = "Agent Workflows"
+        case cliEnvs = "CLI & Envs"
+
+        public var id: String { rawValue }
+
+        public var icon: String {
+            switch self {
+            case .kanban: return "rectangle.split.3x1.fill"
+            case .repoHealth: return "heart.text.square.fill"
+            case .workflows: return "cpu.fill"
+            case .cliEnvs: return "terminal.fill"
+            }
+        }
+    }
+
+    @State private var selectedNavTab: NavigationTab = .kanban
+    @AppStorage("workmanager_memo_view_mode") private var memoViewMode: MemoViewMode = .kanban
+
     public init(environment: AppEnvironment = .shared) {
         self._listViewModel = StateObject(wrappedValue: RepositoryListViewModel(environment: environment))
         self._detailViewModel = StateObject(wrappedValue: RepositoryDetailViewModel(environment: environment))
@@ -18,19 +39,15 @@ public struct MainSplitView: View {
             )
             .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
         } detail: {
-            RepositoryDetailView(
-                viewModel: detailViewModel,
-                onMemoCountChanged: { newCount in
-                    if let repoId = detailViewModel.repository?.id {
-                        listViewModel.updateMemoCount(for: repoId, count: newCount)
-                    }
-                }
-            )
+            VStack(spacing: 0) {
+                topNavigationBar
+                Divider()
+                selectedTabContent
+            }
             .navigationTitle(detailViewModel.repository?.name ?? "WorkManager")
         }
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView {
-                // 설정 창이 완전히 닫힌 후 저장소 동기화 시작 (시트 애니메이션 충돌 방지)
                 Task {
                     try? await Task.sleep(nanoseconds: 350_000_000)
                     await listViewModel.refreshRepositories()
@@ -49,7 +66,6 @@ public struct MainSplitView: View {
             }
         }
         .task {
-            // 앱 구동 시: 토큰 미등록이면 환경설정 시트 바로 표시, 토큰 있으면 저장소 동기화
             listViewModel.loadSettings()
             if listViewModel.currentSettings.githubToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 isSettingsPresented = true
@@ -70,6 +86,174 @@ public struct MainSplitView: View {
             }
         } message: {
             Text(listViewModel.errorMessage ?? "")
+        }
+    }
+
+    // MARK: - Top Navigation Bar (Stitch)
+    private var topNavigationBar: some View {
+        HStack(spacing: 12) {
+            leadingProjectInfo
+            Spacer()
+            centerNavigationTabs
+            Spacer()
+            trailingActions
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+    }
+
+    private var leadingProjectInfo: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "folder.fill.badge.gearshape")
+                .foregroundColor(.accentColor)
+                .font(.system(size: 14))
+
+            Text("WorkManager")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+
+            if let repo = detailViewModel.repository {
+                Text("—")
+                    .foregroundColor(.secondary.opacity(0.5))
+                Text(repo.name)
+                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2.5)
+                    .background(Color.primary.opacity(0.06))
+                    .clipShape(Capsule())
+            }
+        }
+    }
+
+    private var centerNavigationTabs: some View {
+        HStack(spacing: 3) {
+            ForEach(NavigationTab.allCases) { tab in
+                navTabButton(for: tab)
+            }
+        }
+        .padding(3)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.7))
+        .clipShape(Capsule())
+    }
+
+    private func navTabButton(for tab: NavigationTab) -> some View {
+        let isSelected = (selectedNavTab == tab)
+        return Button(action: {
+            withAnimation(.spring(response: 0.25)) { selectedNavTab = tab }
+        }) {
+            HStack(spacing: 5) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 11))
+                Text(tab.rawValue)
+                    .font(.system(size: 11.5, weight: isSelected ? .bold : .medium))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4.5)
+            .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+            .foregroundColor(isSelected ? .accentColor : .secondary)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var trailingActions: some View {
+        HStack(spacing: 8) {
+            if selectedNavTab == .kanban {
+                Picker("보기", selection: $memoViewMode) {
+                    Label("Board", systemImage: "rectangle.split.3x1").tag(MemoViewMode.kanban)
+                    Label("List", systemImage: "list.bullet").tag(MemoViewMode.list)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 140)
+            }
+
+            Button(action: {
+                listViewModel.searchQuery = ""
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 10))
+                    Text("Search (⌘K)")
+                        .font(.system(size: 10.5))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.primary.opacity(0.05))
+                .foregroundColor(.secondary)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("k", modifiers: .command)
+
+            Button(action: { isSettingsPresented = true }) {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("환경설정 (⌘,)")
+        }
+    }
+
+    // MARK: - Selected Tab Content View
+    @ViewBuilder
+    private var selectedTabContent: some View {
+        switch selectedNavTab {
+        case .kanban:
+            RepositoryDetailView(
+                viewModel: detailViewModel,
+                onMemoCountChanged: { newCount in
+                    if let repoId = detailViewModel.repository?.id {
+                        listViewModel.updateMemoCount(for: repoId, count: newCount)
+                    }
+                }
+            )
+        case .repoHealth:
+            RepoHealthDashboardView(
+                repositories: listViewModel.repositories,
+                settings: listViewModel.currentSettings,
+                onSelectRepo: { repo in
+                    listViewModel.selectedRepositoryId = repo.id
+                    selectedNavTab = .kanban
+                }
+            )
+        case .workflows:
+            AgentWorkflowsView(
+                selectedRepo: detailViewModel.repository,
+                memos: detailViewModel.memos,
+                settings: listViewModel.currentSettings,
+                onOpenSettings: { isSettingsPresented = true },
+                onExecuteTask: { memo in
+                    Task {
+                        await detailViewModel.executeTask(for: memo)
+                    }
+                },
+                onOpenTerminal: {
+                    if let repo = detailViewModel.repository {
+                        TerminalSessionManager.shared.togglePanel(
+                            for: repo.id,
+                            name: repo.name,
+                            localPath: detailViewModel.localDirectoryPath
+                        )
+                    }
+                }
+            )
+        case .cliEnvs:
+            CliEnvironmentsView(
+                localPath: detailViewModel.localDirectoryPath,
+                settings: listViewModel.currentSettings,
+                onOpenSettings: { isSettingsPresented = true },
+                onChooseFolder: { detailViewModel.chooseLocalFolder() },
+                onOpenInFinder: {
+                    if let path = detailViewModel.localDirectoryPath {
+                        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
+                    }
+                },
+                onOpenTerminal: {
+                    detailViewModel.openInExternalTerminal()
+                }
+            )
         }
     }
 }

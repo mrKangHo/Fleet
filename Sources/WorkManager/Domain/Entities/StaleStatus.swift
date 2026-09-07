@@ -21,6 +21,11 @@ public enum StaleStatus: Hashable, Sendable {
         return false
     }
 
+    public var isWarning: Bool {
+        if case .warning = self { return true }
+        return false
+    }
+
     /// 화면 표시용 D+day 문자열 (예: "D+0", "D+45", "활동 없음")
     public var displayBadge: String {
         switch self {
@@ -32,6 +37,24 @@ public enum StaleStatus: Hashable, Sendable {
             }
         case .unknown:
             return "기록 없음"
+        }
+    }
+
+    /// Stitch 디자인 규격 뱃지 텍스트 (예: "• Active", "• D-19", "• D-32")
+    public var stitchBadge: String {
+        switch self {
+        case .active(let days):
+            if days == 0 {
+                return "• Active"
+            } else {
+                return "• D-\(days)"
+            }
+        case .warning(let days):
+            return "• D-\(days)"
+        case .stale(let days):
+            return "• D-\(days)"
+        case .unknown:
+            return "• 기록 없음"
         }
     }
 

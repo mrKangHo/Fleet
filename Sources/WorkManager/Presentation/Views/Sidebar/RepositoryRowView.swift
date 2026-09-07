@@ -46,9 +46,9 @@ public struct RepositoryRowView: View {
 
                 Spacer(minLength: 6)
 
-                // D-day 뱃지 (Glass Capsule with monospaced digit)
-                Text(status.displayBadge)
-                    .font(.system(size: 11, weight: .bold, design: .rounded).monospacedDigit())
+                // D-day 뱃지 (Stitch Style: • D-32, • D-19, • Active)
+                Text(status.stitchBadge)
+                    .font(.system(size: 10.5, weight: .bold, design: .rounded).monospacedDigit())
                     .padding(.horizontal, 7)
                     .padding(.vertical, 2.5)
                     .background(statusBadgeBackground)
@@ -56,7 +56,7 @@ public struct RepositoryRowView: View {
                     .clipShape(Capsule())
                     .overlay(
                         Capsule()
-                            .stroke(statusBadgeForeground.opacity(0.25), lineWidth: 0.8)
+                            .stroke(statusBadgeForeground.opacity(0.28), lineWidth: 0.8)
                     )
             }
 

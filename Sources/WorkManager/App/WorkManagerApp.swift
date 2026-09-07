@@ -20,5 +20,10 @@ struct WorkManagerApp: App {
                 }
             }
         }
+
+        MenuBarExtra("WorkManager", systemImage: "sparkles.rectangle.stack") {
+            MenuBarExtraView(environment: environment)
+        }
+        .menuBarExtraStyle(.window)
     }
 }

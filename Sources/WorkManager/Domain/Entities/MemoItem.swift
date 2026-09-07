@@ -112,3 +112,17 @@ public struct MemoItem: Identifiable, Codable, Hashable, Sendable {
         try container.encode(updatedAt, forKey: .updatedAt)
     }
 }
+
+/// 메모 목록 표시 뷰 모드 (칸반 보드 ↔ 리스트)
+public enum MemoViewMode: String, Codable, CaseIterable, Identifiable, Sendable {
+    case kanban = "칸반"
+    case list = "리스트"
+
+    public var id: String { rawValue }
+    public var iconName: String {
+        switch self {
+        case .kanban: return "rectangle.split.3x1"
+        case .list: return "list.bullet"
+        }
+    }
+}

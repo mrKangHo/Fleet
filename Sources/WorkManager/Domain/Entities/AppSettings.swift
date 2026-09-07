@@ -104,6 +104,76 @@ public struct AppSettings: Codable, Hashable, Sendable {
             let installed = allCases.filter { $0.isInstalled }
             return installed.isEmpty ? [.claude, .antigravity] : installed
         }
+
+        public var detectedPath: String? {
+            guard let exe = executableName else { return nil }
+            return AIAgentDiscovery.resolvedPath(binaryName: exe)
+        }
+
+        public var detectedVersion: String? {
+            guard let exe = executableName else { return nil }
+            return AIAgentDiscovery.resolvedVersion(binaryName: exe)
+        }
+
+        public var capabilities: [String] {
+            switch self {
+            case .antigravity:
+                return [
+                    "대규모 리팩토링 및 다중 파일 수정 최적화",
+                    "Google DeepMind 고속 컨텍스트 스트리밍",
+                    "자동 컴파일 & 단위 테스트 루프 지원"
+                ]
+            case .claude:
+                return [
+                    "Claude 3.7 Sonnet 하이브리드 추론 지원",
+                    "대화형 REPL 터미널 및 파일 편집 브릿지",
+                    "Anthropic API 직접 연동"
+                ]
+            case .aider, .cursor:
+                return [
+                    "Git Repo Map 기반 문맥 압축 전송",
+                    "Cursor IDE 에디터 소켓 동기화",
+                    "로컬 데몬 백그라운드 리스닝"
+                ]
+            case .codex:
+                return [
+                    "OpenAI Codex 코드 생성 엔진",
+                    "빠른 인라인 자동완성 지원",
+                    "경량화된 CLI 작업 수행"
+                ]
+            case .goose, .openhands:
+                return [
+                    "자율 에이전트 다중 스텝 실행",
+                    "로컬 도구 및 터미널 권한 위임",
+                    "오픈소스 에이전트 프레임워크 연동"
+                ]
+            case .custom:
+                return [
+                    "사용자 정의 CLI 명령어 직접 실행",
+                    "환경 변수 및 파이프라인 전달",
+                    "임의의 로컬 자동화 스크립트 트리거"
+                ]
+            }
+        }
+
+        public var latencyHint: String {
+            switch self {
+            case .antigravity: return "18ms"
+            case .claude: return "24ms"
+            case .aider, .cursor: return "35ms"
+            case .codex: return "28ms"
+            default: return "30ms"
+            }
+        }
+
+        public var shortcutHint: String {
+            switch self {
+            case .antigravity: return "⌥ Space"
+            case .claude: return "⌥ C"
+            case .aider, .cursor: return "⌥ A"
+            default: return "⌥ ↵"
+            }
+        }
     }
 
     public enum TerminalApp: String, Codable, CaseIterable, Sendable, Identifiable {
@@ -165,6 +235,11 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var defaultProjectsDirectory: String
     public var customPromptTemplate: String
 
+    public var criticalThresholdDays: Int
+    public var autoCommitOnTaskCompletion: Bool
+    public var streamInEmbeddedTerminal: Bool
+    public var weeklyReportEnabled: Bool
+
     // MARK: - Monitored Repositories
     public var monitoredRepoIds: Set<Int>?
     public var ignoredRepoIds: Set<Int>
@@ -183,8 +258,9 @@ public struct AppSettings: Codable, Hashable, Sendable {
 
     public init(
         githubToken: String = "",
-        staleThresholdDays: Int = 30,
-        warningThresholdDays: Int = 14,
+        staleThresholdDays: Int = 14,
+        warningThresholdDays: Int = 7,
+        criticalThresholdDays: Int = 30,
         isDockBadgeEnabled: Bool = true,
         isNotificationEnabled: Bool = true,
         excludeArchived: Bool = true,
@@ -192,6 +268,9 @@ public struct AppSettings: Codable, Hashable, Sendable {
         autoRefreshIntervalMinutes: Int = 60,
         aiAgentPreset: AIAgentPreset = .claude,
         dangerouslySkipPermissions: Bool = true,
+        autoCommitOnTaskCompletion: Bool = true,
+        streamInEmbeddedTerminal: Bool = true,
+        weeklyReportEnabled: Bool = true,
         customCliTemplate: String = "claude --dangerously-skip-permissions \"{prompt}\"",
         terminalApp: TerminalApp = .iTerm,
         defaultProjectsDirectory: String = "~/Documents",
@@ -208,6 +287,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.githubToken = githubToken
         self.staleThresholdDays = staleThresholdDays
         self.warningThresholdDays = warningThresholdDays
+        self.criticalThresholdDays = criticalThresholdDays
         self.isDockBadgeEnabled = isDockBadgeEnabled
         self.isNotificationEnabled = isNotificationEnabled
         self.excludeArchived = excludeArchived
@@ -215,6 +295,9 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.autoRefreshIntervalMinutes = autoRefreshIntervalMinutes
         self.aiAgentPreset = aiAgentPreset
         self.dangerouslySkipPermissions = dangerouslySkipPermissions
+        self.autoCommitOnTaskCompletion = autoCommitOnTaskCompletion
+        self.streamInEmbeddedTerminal = streamInEmbeddedTerminal
+        self.weeklyReportEnabled = weeklyReportEnabled
         self.customCliTemplate = customCliTemplate
         self.terminalApp = terminalApp
         self.defaultProjectsDirectory = defaultProjectsDirectory
@@ -228,8 +311,9 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.githubToken = try container.decodeIfPresent(String.self, forKey: .githubToken) ?? ""
-        self.staleThresholdDays = try container.decodeIfPresent(Int.self, forKey: .staleThresholdDays) ?? 30
-        self.warningThresholdDays = try container.decodeIfPresent(Int.self, forKey: .warningThresholdDays) ?? 14
+        self.staleThresholdDays = try container.decodeIfPresent(Int.self, forKey: .staleThresholdDays) ?? 14
+        self.warningThresholdDays = try container.decodeIfPresent(Int.self, forKey: .warningThresholdDays) ?? 7
+        self.criticalThresholdDays = try container.decodeIfPresent(Int.self, forKey: .criticalThresholdDays) ?? 30
         self.isDockBadgeEnabled = try container.decodeIfPresent(Bool.self, forKey: .isDockBadgeEnabled) ?? true
         self.isNotificationEnabled = try container.decodeIfPresent(Bool.self, forKey: .isNotificationEnabled) ?? true
         self.excludeArchived = try container.decodeIfPresent(Bool.self, forKey: .excludeArchived) ?? true
@@ -237,6 +321,9 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.autoRefreshIntervalMinutes = try container.decodeIfPresent(Int.self, forKey: .autoRefreshIntervalMinutes) ?? 60
         self.aiAgentPreset = try container.decodeIfPresent(AIAgentPreset.self, forKey: .aiAgentPreset) ?? .claude
         self.dangerouslySkipPermissions = try container.decodeIfPresent(Bool.self, forKey: .dangerouslySkipPermissions) ?? true
+        self.autoCommitOnTaskCompletion = try container.decodeIfPresent(Bool.self, forKey: .autoCommitOnTaskCompletion) ?? true
+        self.streamInEmbeddedTerminal = try container.decodeIfPresent(Bool.self, forKey: .streamInEmbeddedTerminal) ?? true
+        self.weeklyReportEnabled = try container.decodeIfPresent(Bool.self, forKey: .weeklyReportEnabled) ?? true
         self.customCliTemplate = try container.decodeIfPresent(String.self, forKey: .customCliTemplate) ?? "claude --dangerously-skip-permissions \"{prompt}\""
         self.terminalApp = try container.decodeIfPresent(TerminalApp.self, forKey: .terminalApp) ?? .iTerm
         self.defaultProjectsDirectory = try container.decodeIfPresent(String.self, forKey: .defaultProjectsDirectory) ?? "~/Documents"
@@ -259,6 +346,7 @@ public enum AIAgentDiscovery: Sendable {
     private static let lock = NSLock()
     private static var searchPathsCache: [String]?
     private static var installedCache: [String: (isInstalled: Bool, checkedAt: Date)] = [:]
+    private static var versionCache: [String: String] = [:]
     private static let cacheTTL: TimeInterval = 10.0 // 10초간 결과 캐싱하여 반복 디스크 I/O 방지
 
     /// 실행 파일 탐색 기본 경로 목록
@@ -283,6 +371,7 @@ public enum AIAgentDiscovery: Sendable {
             "\(home)/.gemini/antigravity-cli/bin",
             "\(home)/.bun/bin",
             "\(home)/.yarn/bin",
+            "\(home)/.npm-global/bin",
             "\(home)/Library/pnpm",
             "\(home)/.local/share/mise/shims",
             "\(home)/.asdf/shims",
@@ -314,6 +403,60 @@ public enum AIAgentDiscovery: Sendable {
 
         searchPathsCache = dirs
         return dirs
+    }
+
+    /// 바이너리의 절대 경로 반환
+    public static func resolvedPath(binaryName: String) -> String? {
+        let fileManager = FileManager.default
+        for dir in searchPaths() {
+            let fullPath = "\(dir)/\(binaryName)"
+            if fileManager.isExecutableFile(atPath: fullPath) {
+                return fullPath
+            }
+        }
+        return nil
+    }
+
+    /// 바이너리의 버전 문자열 반환 (예: "v2.1.236", "v1.1.27")
+    public static func resolvedVersion(binaryName: String) -> String? {
+        lock.lock()
+        if let ver = versionCache[binaryName] {
+            lock.unlock()
+            return ver
+        }
+        lock.unlock()
+
+        guard let path = resolvedPath(binaryName: binaryName) else { return nil }
+
+        let pipe = Pipe()
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = ["--version"]
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = searchPaths().joined(separator: ":")
+        process.environment = env
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            if process.terminationStatus == 0 {
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                if let str = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), !str.isEmpty {
+                    let firstLine = str.components(separatedBy: .newlines).first ?? str
+                    let clean = firstLine.replacingOccurrences(of: "(Claude Code)", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    let formatted = clean.hasPrefix("v") ? clean : "v\(clean)"
+                    lock.lock()
+                    versionCache[binaryName] = formatted
+                    lock.unlock()
+                    return formatted
+                }
+            }
+        } catch {
+            return nil
+        }
+        return nil
     }
 
     /// 주어진 CLI 바이너리가 현재 시스템에 설치되어 있는지 확인
@@ -372,5 +515,6 @@ public enum AIAgentDiscovery: Sendable {
         defer { lock.unlock() }
         searchPathsCache = nil
         installedCache.removeAll()
+        versionCache.removeAll()
     }
 }

@@ -76,4 +76,25 @@ public final class SettingsViewModel: ObservableObject {
             save()
         }
     }
+
+    public func rescanCLI() {
+        AIAgentDiscovery.invalidateCache()
+        objectWillChange.send()
+    }
+
+    public func resetDefaults() {
+        let currentToken = settings.githubToken
+        let currentMonitored = settings.monitoredRepoIds
+        let currentIgnored = settings.ignoredRepoIds
+        let currentCompleted = settings.hasCompletedInitialSelection
+
+        var def = AppSettings.default
+        def.githubToken = currentToken
+        def.monitoredRepoIds = currentMonitored
+        def.ignoredRepoIds = currentIgnored
+        def.hasCompletedInitialSelection = currentCompleted
+
+        self.settings = def
+        save()
+    }
 }
