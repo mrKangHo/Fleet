@@ -14,7 +14,15 @@ public final class SettingsViewModel: ObservableObject {
 
     public init(environment: AppEnvironment = .shared) {
         self.environment = environment
-        self.settings = environment.settingsRepository.loadSettings()
+        let loaded = environment.settingsRepository.loadSettings()
+        var currentSettings = loaded
+        if !currentSettings.aiAgentPreset.isInstalled && currentSettings.aiAgentPreset != .custom {
+            if let firstInstalled = AppSettings.AIAgentPreset.installedCases.first {
+                currentSettings.aiAgentPreset = firstInstalled
+                environment.settingsRepository.saveSettings(currentSettings)
+            }
+        }
+        self.settings = currentSettings
     }
 
     public func save() {

@@ -222,7 +222,7 @@ public struct MemoTimelineView: View {
 
                             Divider()
 
-                            ForEach(AppSettings.AIAgentPreset.allCases) { preset in
+                            ForEach(availablePresets(defaultPreset: viewModel.defaultAIPreset)) { preset in
                                 Button(action: {
                                     Task { await viewModel.executeBatchTask(preset: preset) }
                                 }) {
@@ -338,6 +338,14 @@ public struct MemoTimelineView: View {
             onMemoCountChanged?(newCount)
             isTitleFocused = false
         }
+    }
+
+    private func availablePresets(defaultPreset: AppSettings.AIAgentPreset) -> [AppSettings.AIAgentPreset] {
+        var list = AppSettings.AIAgentPreset.installedCases
+        if defaultPreset == .custom && !list.contains(.custom) {
+            list.append(.custom)
+        }
+        return list
     }
 }
 
@@ -522,7 +530,7 @@ public struct ModernMemoCardView: View {
 
                             Divider()
 
-                            ForEach(AppSettings.AIAgentPreset.allCases) { preset in
+                            ForEach(availablePresets) { preset in
                                 Button(action: {
                                     onExecuteTask(preset)
                                 }) {
@@ -606,5 +614,13 @@ public struct ModernMemoCardView: View {
         case .medium: return AppTheme.warningAmber
         case .low: return Color.blue
         }
+    }
+
+    private var availablePresets: [AppSettings.AIAgentPreset] {
+        var list = AppSettings.AIAgentPreset.installedCases
+        if defaultPreset == .custom && !list.contains(.custom) {
+            list.append(.custom)
+        }
+        return list
     }
 }

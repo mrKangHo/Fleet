@@ -297,7 +297,7 @@ public struct VSCodeTerminalPanelView: View {
             Text("새 AI 에이전트 탭:")
                 .font(.caption)
 
-            ForEach(AppSettings.AIAgentPreset.allCases) { preset in
+            ForEach(AppSettings.AIAgentPreset.installedCases) { preset in
                 Button(action: {
                     withAnimation(AppTheme.quickSpring) {
                         _ = group.createTab(preset: preset, autoSelect: true)

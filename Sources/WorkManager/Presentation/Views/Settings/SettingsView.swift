@@ -167,10 +167,19 @@ public struct SettingsView: View {
                 }
 
                 Picker("기본 AI", selection: $viewModel.settings.aiAgentPreset) {
-                    ForEach(AppSettings.AIAgentPreset.allCases) { preset in
-                        HStack {
+                    ForEach(selectablePresets) { preset in
+                        HStack(spacing: 6) {
                             Image(systemName: preset.iconName)
                             Text(preset.rawValue)
+                            if preset.isInstalled {
+                                Text("설치됨")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(Color.green.opacity(0.15))
+                                    .foregroundColor(.green)
+                                    .cornerRadius(3)
+                            }
                         }
                         .tag(preset)
                     }
@@ -499,5 +508,13 @@ public struct SettingsView: View {
             .padding(14)
             .glassCard(cornerRadius: 10)
         }
+    }
+
+    private var selectablePresets: [AppSettings.AIAgentPreset] {
+        var list = AppSettings.AIAgentPreset.installedCases
+        if !list.contains(.custom) {
+            list.append(.custom)
+        }
+        return list
     }
 }

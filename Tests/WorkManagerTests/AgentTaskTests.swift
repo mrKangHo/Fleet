@@ -247,6 +247,7 @@ final class TerminalMultiTabTests: XCTestCase {
         XCTAssertEqual(group.tabs[0].title, "터미널")
     }
 
+    @MainActor
     func testTerminalProfileStylingAndDynamicUpdate() {
         let group = manager.getOrCreateGroup(for: 999, name: "TestRepo", localPath: "/tmp")
         let tab = group.activeTab
@@ -270,3 +271,26 @@ final class TerminalMultiTabTests: XCTestCase {
         XCTAssertEqual(tab?.terminalView.caretColor, NSColor.white)
     }
 }
+
+// MARK: - AI Agent Discovery Tests
+final class AIAgentDiscoveryTests: XCTestCase {
+    func testSearchPathsNotEmpty() {
+        let paths = AIAgentDiscovery.searchPaths()
+        XCTAssertFalse(paths.isEmpty)
+        XCTAssertTrue(paths.contains("/opt/homebrew/bin") || paths.contains("/usr/local/bin"))
+    }
+
+    func testInstalledCasesOnlyContainsExistingTools() {
+        let installed = AppSettings.AIAgentPreset.installedCases
+        XCTAssertFalse(installed.isEmpty)
+        for preset in installed {
+            XCTAssertNotNil(preset.executableName)
+            XCTAssertTrue(preset.isInstalled)
+        }
+    }
+
+    func testUninstalledPresetsAreFilteredOut() {
+        XCTAssertFalse(AIAgentDiscovery.isInstalled(binaryName: "non_existent_fake_ai_binary_12345"))
+    }
+}
+

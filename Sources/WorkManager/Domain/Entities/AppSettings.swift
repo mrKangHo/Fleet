@@ -76,6 +76,34 @@ public struct AppSettings: Codable, Hashable, Sendable {
         public var defaultCommandTemplate: String {
             commandTemplate(dangerouslySkipPermissions: true)
         }
+
+        /// 각 AI 에이전트 도구의 CLI 실행 파일명
+        public var executableName: String? {
+            switch self {
+            case .claude: return "claude"
+            case .antigravity: return "agy"
+            case .codex: return "codex"
+            case .cursor: return "cursor"
+            case .aider: return "aider"
+            case .goose: return "goose"
+            case .openhands: return "openhands"
+            case .custom: return nil
+            }
+        }
+
+        /// 현재 시스템(Mac)에 해당 AI CLI 도구가 실제로 설치되어 있는지 여부
+        public var isInstalled: Bool {
+            guard let exe = executableName else {
+                return false
+            }
+            return AIAgentDiscovery.isInstalled(binaryName: exe)
+        }
+
+        /// 현재 Mac에 실제로 설치되어 있는 AI Agent 목록만 필터링하여 반환
+        public static var installedCases: [AIAgentPreset] {
+            let installed = allCases.filter { $0.isInstalled }
+            return installed.isEmpty ? [.claude, .antigravity] : installed
+        }
     }
 
     public enum TerminalApp: String, Codable, CaseIterable, Sendable, Identifiable {
@@ -224,4 +252,125 @@ public struct AppSettings: Codable, Hashable, Sendable {
     }
 
     public static let `default` = AppSettings()
+}
+
+/// 시스템에 설치된 AI CLI 도구를 빠르고 안전하게 감지하는 유틸리티
+public enum AIAgentDiscovery: Sendable {
+    private static let lock = NSLock()
+    private static var searchPathsCache: [String]?
+    private static var installedCache: [String: (isInstalled: Bool, checkedAt: Date)] = [:]
+    private static let cacheTTL: TimeInterval = 10.0 // 10초간 결과 캐싱하여 반복 디스크 I/O 방지
+
+    /// 실행 파일 탐색 기본 경로 목록
+    public static func searchPaths() -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if let cached = searchPathsCache {
+            return cached
+        }
+
+        let fileManager = FileManager.default
+        let home = fileManager.homeDirectoryForCurrentUser.path
+
+        var dirs: [String] = [
+            "/opt/homebrew/bin",
+            "/opt/homebrew/sbin",
+            "/usr/local/bin",
+            "\(home)/bin",
+            "\(home)/.local/bin",
+            "\(home)/.cargo/bin",
+            "\(home)/.gemini/antigravity-cli/bin",
+            "\(home)/.bun/bin",
+            "\(home)/.yarn/bin",
+            "\(home)/Library/pnpm",
+            "\(home)/.local/share/mise/shims",
+            "\(home)/.asdf/shims",
+            "\(home)/.volta/bin",
+            "/usr/bin",
+            "/bin",
+            "/usr/sbin",
+            "/sbin"
+        ]
+
+        if let envPath = ProcessInfo.processInfo.environment["PATH"] {
+            for p in envPath.split(separator: ":").map(String.init) {
+                if !dirs.contains(p) {
+                    dirs.append(p)
+                }
+            }
+        }
+
+        // nvm 버전별 node bin 디렉토리도 자동 탐색 (~/.nvm/versions/node/*/bin)
+        let nvmDir = "\(home)/.nvm/versions/node"
+        if let subdirs = try? fileManager.contentsOfDirectory(atPath: nvmDir) {
+            for sub in subdirs {
+                let binPath = "\(nvmDir)/\(sub)/bin"
+                if fileManager.fileExists(atPath: binPath) && !dirs.contains(binPath) {
+                    dirs.append(binPath)
+                }
+            }
+        }
+
+        searchPathsCache = dirs
+        return dirs
+    }
+
+    /// 주어진 CLI 바이너리가 현재 시스템에 설치되어 있는지 확인
+    public static func isInstalled(binaryName: String) -> Bool {
+        lock.lock()
+        if let entry = installedCache[binaryName], Date().timeIntervalSince(entry.checkedAt) < cacheTTL {
+            let result = entry.isInstalled
+            lock.unlock()
+            return result
+        }
+        lock.unlock()
+
+        let fileManager = FileManager.default
+        var exists = false
+
+        // 1. 주요 설치 디렉토리에서 빠른 파일 검사
+        for dir in searchPaths() {
+            let fullPath = "\(dir)/\(binaryName)"
+            if fileManager.isExecutableFile(atPath: fullPath) {
+                exists = true
+                break
+            }
+        }
+
+        // 2. 미발견 시 /usr/bin/which 로 폴백 확인
+        if !exists {
+            let pipe = Pipe()
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+            process.arguments = [binaryName]
+            process.standardOutput = pipe
+            process.standardError = Pipe()
+            var env = ProcessInfo.processInfo.environment
+            env["PATH"] = searchPaths().joined(separator: ":")
+            process.environment = env
+
+            do {
+                try process.run()
+                process.waitUntilExit()
+                exists = (process.terminationStatus == 0)
+            } catch {
+                exists = false
+            }
+        }
+
+        lock.lock()
+        installedCache[binaryName] = (isInstalled: exists, checkedAt: Date())
+        lock.unlock()
+
+        return exists
+    }
+
+    /// 캐시 무효화
+    public static func invalidateCache() {
+        lock.lock()
+        defer { lock.unlock() }
+        searchPathsCache = nil
+        installedCache.removeAll()
+    }
 }
