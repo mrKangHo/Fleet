@@ -126,6 +126,19 @@ Sources/Fleet/
 
 ---
 
+## 🍺 Homebrewでインストール
+
+このリポジトリ自体をHomebrewのタップ（tap）として使用します — 別途`homebrew-*`リポジトリを作る必要はありません。
+
+```bash
+brew tap mrKangHo/workmanager https://github.com/mrKangHo/workmanager.git
+brew install --cask fleet
+```
+
+> ⚠️ Fleetはまだコード署名（code signing）と公証（notarization）がされていません。初回起動時にmacOSがアプリをブロックした場合は、Finderで Fleet.app を右クリックして「開く」を選択するか、`xattr -cr /Applications/Fleet.app` を実行してください。現時点ではApple Silicon（arm64）のみ対応しています。
+
+---
+
 ## 🚀 ビルド＆実行方法
 
 ### 1. Xcodeでプロジェクトを開く（推奨）
