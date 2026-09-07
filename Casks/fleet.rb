@@ -4,7 +4,7 @@ cask "fleet" do
 
   url "https://github.com/mrKangHo/workmanager/releases/download/v#{version}/Fleet-#{version}.zip"
   name "Fleet"
-  desc "Track GitHub repository neglect and run AI agent tasks from a native macOS app"
+  desc "Track GitHub repository neglect and run AI agent tasks"
   homepage "https://github.com/mrKangHo/workmanager"
 
   livecheck do
@@ -19,10 +19,10 @@ cask "fleet" do
 
   zap trash: [
     "~/Library/Application Support/WorkManager",
-    "~/Library/Preferences/com.workmanager.macos.plist",
     "~/Library/Caches/com.workmanager.macos",
     "~/Library/HTTPStorages/com.workmanager.macos",
     "~/Library/HTTPStorages/com.workmanager.macos.binarycookies",
+    "~/Library/Preferences/com.workmanager.macos.plist",
   ]
 
   caveats <<~EOS
