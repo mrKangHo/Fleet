@@ -73,4 +73,42 @@ public struct MemoItem: Identifiable, Codable, Hashable, Sendable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
+
+    // MARK: - Codable (하위 호환 및 누락 필드 방어)
+    enum CodingKeys: String, CodingKey {
+        case id, repositoryId, title, content, priority, status, isCompleted, lastExecutedAt, createdAt, updatedAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        repositoryId = try container.decode(Int.self, forKey: .repositoryId)
+        title = try container.decode(String.self, forKey: .title)
+        content = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
+        priority = try container.decodeIfPresent(Priority.self, forKey: .priority) ?? .medium
+        lastExecutedAt = try container.decodeIfPresent(Date.self, forKey: .lastExecutedAt)
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
+
+        if let decodedStatus = try container.decodeIfPresent(Status.self, forKey: .status) {
+            status = decodedStatus
+        } else if let legacyCompleted = try container.decodeIfPresent(Bool.self, forKey: .isCompleted) {
+            status = legacyCompleted ? .completed : .pending
+        } else {
+            status = .pending
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(repositoryId, forKey: .repositoryId)
+        try container.encode(title, forKey: .title)
+        try container.encode(content, forKey: .content)
+        try container.encode(priority, forKey: .priority)
+        try container.encode(status, forKey: .status)
+        try container.encode(lastExecutedAt, forKey: .lastExecutedAt)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+    }
 }

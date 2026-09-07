@@ -110,23 +110,72 @@ public final class RepositoryDetailViewModel: ObservableObject {
     }
 
     public func toggleCompletion(for memo: MemoItem) async {
+        guard let index = memos.firstIndex(where: { $0.id == memo.id }) else { return }
+        let original = memos[index]
+        var target = original
+        target.isCompleted.toggle()
+        target.updatedAt = Date()
+        // 1. 낙관적 UI 갱신 (지연 없는 60fps 애니메이션)
+        self.memos[index] = target
+
         do {
-            let updated = try await environment.manageMemoUseCase.toggleCompletion(for: memo)
-            if let index = memos.firstIndex(where: { $0.id == memo.id }) {
-                memos[index] = updated
-            }
+            try await environment.manageMemoUseCase.updateMemo(target)
         } catch {
+            // 실패 시 롤백
+            if let rollbackIndex = memos.firstIndex(where: { $0.id == memo.id }) {
+                memos[rollbackIndex] = original
+            }
             self.errorMessage = "상태 변경 실패: \(error.localizedDescription)"
         }
     }
 
+    public func updateMemoStatus(for memo: MemoItem, newStatus: MemoItem.Status) async {
+        guard let index = memos.firstIndex(where: { $0.id == memo.id }) else { return }
+        let original = memos[index]
+        var target = original
+        target.status = newStatus
+        target.updatedAt = Date()
+        self.memos[index] = target
+
+        do {
+            try await environment.manageMemoUseCase.updateMemo(target)
+        } catch {
+            if let rollbackIndex = memos.firstIndex(where: { $0.id == memo.id }) {
+                memos[rollbackIndex] = original
+            }
+            self.errorMessage = "상태 변경 실패: \(error.localizedDescription)"
+        }
+    }
+
+    public func updateMemoPriority(for memo: MemoItem, newPriority: MemoItem.Priority) async {
+        guard let index = memos.firstIndex(where: { $0.id == memo.id }) else { return }
+        let original = memos[index]
+        var target = original
+        target.priority = newPriority
+        target.updatedAt = Date()
+        self.memos[index] = target
+
+        do {
+            try await environment.manageMemoUseCase.updateMemo(target)
+        } catch {
+            if let rollbackIndex = memos.firstIndex(where: { $0.id == memo.id }) {
+                memos[rollbackIndex] = original
+            }
+            self.errorMessage = "우선순위 변경 실패: \(error.localizedDescription)"
+        }
+    }
+
     public func updateMemo(_ memo: MemoItem) async {
+        guard let index = memos.firstIndex(where: { $0.id == memo.id }) else { return }
+        let original = memos[index]
+        self.memos[index] = memo
+
         do {
             try await environment.manageMemoUseCase.updateMemo(memo)
-            if let index = memos.firstIndex(where: { $0.id == memo.id }) {
-                memos[index] = memo
-            }
         } catch {
+            if let rollbackIndex = memos.firstIndex(where: { $0.id == memo.id }) {
+                memos[rollbackIndex] = original
+            }
             self.errorMessage = "메모 수정 실패: \(error.localizedDescription)"
         }
     }
@@ -329,6 +378,7 @@ public final class RepositoryDetailViewModel: ObservableObject {
             }
 
             self.successMessage = "내장 터미널에서 선택한 \(targets.count)개 항목에 대해 [\(activePreset.shortName)] 작업을 시작했습니다!"
+            self.selectedMemoIds.removeAll()
         } catch {
             self.errorMessage = "일괄 작업 실행 실패: \(error.localizedDescription)"
         }
@@ -359,15 +409,64 @@ public final class RepositoryDetailViewModel: ObservableObject {
         // 모두 완료 상태이면 미완료로, 하나라도 미완료가 있으면 완료로 변경
         let allCompleted = targets.allSatisfy { $0.isCompleted }
         let newCompletionState = !allCompleted
+        let now = Date()
 
+        // 1. 낙관적 UI 즉시 반영
+        for target in targets {
+            if let index = memos.firstIndex(where: { $0.id == target.id }) {
+                memos[index].isCompleted = newCompletionState
+                memos[index].updatedAt = now
+            }
+        }
+        self.selectedMemoIds.removeAll()
+
+        // 2. 백그라운드 영속화
         for target in targets {
             var updated = target
             updated.isCompleted = newCompletionState
-            updated.updatedAt = Date()
-            await updateMemo(updated)
+            updated.updatedAt = now
+            try? await environment.manageMemoUseCase.updateMemo(updated)
+        }
+        self.successMessage = "선택한 \(targets.count)개 항목을 \(newCompletionState ? "완료" : "대기 중") 상태로 변경했습니다."
+    }
+
+    public func batchUpdateStatus(_ newStatus: MemoItem.Status) async {
+        let targets = selectedMemos
+        guard !targets.isEmpty else { return }
+        let now = Date()
+
+        // 1. 낙관적 UI 즉시 반영
+        for target in targets {
+            if let index = memos.firstIndex(where: { $0.id == target.id }) {
+                memos[index].status = newStatus
+                memos[index].updatedAt = now
+            }
         }
         self.selectedMemoIds.removeAll()
-        self.successMessage = "\(targets.count)개 항목의 완료 상태가 변경되었습니다."
+
+        // 2. 백그라운드 영속화
+        for target in targets {
+            var updated = target
+            updated.status = newStatus
+            updated.updatedAt = now
+            try? await environment.manageMemoUseCase.updateMemo(updated)
+        }
+        self.successMessage = "선택한 \(targets.count)개 항목의 상태를 '\(newStatus.rawValue)'으로 변경했습니다."
+    }
+
+    public func batchDeleteSelectedMemos() async -> Int {
+        let targets = selectedMemos
+        guard !targets.isEmpty else { return memos.count }
+
+        let targetIds = Set(targets.map { $0.id })
+        self.memos.removeAll { targetIds.contains($0.id) }
+        self.selectedMemoIds.removeAll()
+
+        for id in targetIds {
+            try? await environment.manageMemoUseCase.deleteMemo(id: id)
+        }
+        self.successMessage = "\(targetIds.count)개 메모를 삭제했습니다."
+        return self.memos.count
     }
 
     public func copyPrompt(for memo: MemoItem) {

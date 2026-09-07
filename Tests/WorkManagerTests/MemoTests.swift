@@ -84,4 +84,68 @@ final class ManageMemoUseCaseTests: XCTestCase {
         let list = try await useCase.getMemos(for: 103)
         XCTAssertTrue(list.isEmpty)
     }
+
+    func testLegacyMemoJsonDecoding() throws {
+        // 과거 버전의 JSON (status 없이 isCompleted만 있는 경우)
+        let legacyJson = """
+        {
+            "id": "A1B2C3D4-E5F6-7890-ABCD-EF1234567890",
+            "repositoryId": 999,
+            "title": "레거시 메모",
+            "content": "이전 버전에서 작성됨",
+            "isCompleted": true,
+            "priority": "높음",
+            "createdAt": 1700000000,
+            "updatedAt": 1700000000
+        }
+        """.data(using: .utf8)!
+
+        let decoded = try JSONDecoder().decode(MemoItem.self, from: legacyJson)
+        XCTAssertEqual(decoded.title, "레거시 메모")
+        XCTAssertEqual(decoded.status, .completed)
+        XCTAssertTrue(decoded.isCompleted)
+        XCTAssertEqual(decoded.priority, .high)
+    }
+
+    func testStatusTransitionsAndIsCompleted() {
+        var memo = MemoItem(repositoryId: 200, title: "상태 전환 테스트")
+        XCTAssertEqual(memo.status, .pending)
+        XCTAssertFalse(memo.isCompleted)
+
+        // 작업 중 🚀 으로 전환
+        memo.status = .inProgress
+        XCTAssertEqual(memo.status, .inProgress)
+        XCTAssertFalse(memo.isCompleted)
+
+        // 완료 처리
+        memo.isCompleted = true
+        XCTAssertEqual(memo.status, .completed)
+        XCTAssertTrue(memo.isCompleted)
+
+        // 완료 해제 -> 대기 중으로 복귀
+        memo.isCompleted = false
+        XCTAssertEqual(memo.status, .pending)
+        XCTAssertFalse(memo.isCompleted)
+    }
+
+    func testCustomMemoItemEncodingAndDecoding() throws {
+        let original = MemoItem(
+            repositoryId: 300,
+            title: "인코딩 라운드트립",
+            content: "세부 내용",
+            status: .inProgress,
+            priority: .high
+        )
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(MemoItem.self, from: data)
+
+        XCTAssertEqual(decoded.id, original.id)
+        XCTAssertEqual(decoded.repositoryId, original.repositoryId)
+        XCTAssertEqual(decoded.title, original.title)
+        XCTAssertEqual(decoded.content, original.content)
+        XCTAssertEqual(decoded.status, .inProgress)
+        XCTAssertEqual(decoded.priority, .high)
+        XCTAssertFalse(decoded.isCompleted)
+    }
 }

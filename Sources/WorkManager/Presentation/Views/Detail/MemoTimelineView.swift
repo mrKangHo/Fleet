@@ -9,12 +9,13 @@ public struct MemoTimelineView: View {
     @State private var isCreatingExpanded = false
     @FocusState private var isTitleFocused: Bool
 
-    enum MemoFilter: String, CaseIterable, Identifiable {
+    public enum MemoFilter: String, CaseIterable, Identifiable {
         case all = "전체"
-        case pending = "진행 중"
+        case pending = "대기 중"
+        case inProgress = "작업 중"
         case completed = "완료됨"
 
-        var id: String { rawValue }
+        public var id: String { rawValue }
     }
 
     public init(viewModel: RepositoryDetailViewModel, onMemoCountChanged: ((Int) -> Void)? = nil) {
@@ -22,88 +23,134 @@ public struct MemoTimelineView: View {
         self.onMemoCountChanged = onMemoCountChanged
     }
 
+    private var allCount: Int { viewModel.memos.count }
+    private var pendingCount: Int { viewModel.memos.filter { $0.status == .pending }.count }
+    private var inProgressCount: Int { viewModel.memos.filter { $0.status == .inProgress }.count }
+    private var completedCount: Int { viewModel.memos.filter { $0.status == .completed }.count }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // MARK: - 1. 신규 메모/기능 작성 카드
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundColor(.accentColor)
-                        .font(.system(size: 14))
+            inputCard
 
-                    Text("업데이트할 기능 / 아이디어 메모")
-                        .font(.system(.subheadline, design: .rounded))
-                        .fontWeight(.semibold)
+            // MARK: - 2. 진척도 및 필터 헤더
+            dashboardHeader
 
-                    Spacer()
-
-                    // 우선순위 칩 선택기
-                    Picker("우선순위", selection: $viewModel.newMemoPriority) {
-                        ForEach(MemoItem.Priority.allCases, id: \.self) { p in
-                            Text(p.rawValue).tag(p)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 170)
-                }
-
-                // 제목 입력란
-                HStack(spacing: 8) {
-                    TextField("다음에 추가할 기능이나 버그 수정 사항을 입력하세요...", text: $viewModel.newMemoTitle)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 13))
-                        .focused($isTitleFocused)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(8)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(isTitleFocused ? Color.accentColor : Color.primary.opacity(0.1), lineWidth: 1)
-                        )
-                        .onSubmit {
-                            submitNewMemo()
-                        }
-
-                    Button(action: submitNewMemo) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.up.circle.fill")
-                            Text("등록")
-                        }
-                        .font(.system(size: 12, weight: .semibold))
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.regular)
-                    .disabled(viewModel.newMemoTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-
-                // 상세 메모 (접이식 / 확장형)
-                if isCreatingExpanded || !viewModel.newMemoTitle.isEmpty {
-                    TextField("세부 내용, 체크리스트, 참고 링크를 적어보세요 (선택사항)", text: $viewModel.newMemoContent, axis: .vertical)
-                        .lineLimit(2...5)
-                        .font(.system(size: 12))
-                        .textFieldStyle(.plain)
-                        .padding(10)
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(8)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                        )
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
+            // MARK: - 2-1. 선택된 메모 일괄 작업 액션 바 (선택 시 동적 표시)
+            if !viewModel.selectedMemoIds.isEmpty {
+                batchActionBar
             }
-            .padding(14)
-            .glassCard(cornerRadius: 12)
 
-            // MARK: - 2. 필터 헤더 및 통계
+            // MARK: - 3. 메모 카드 목록
+            memoList
+        }
+    }
+
+    // MARK: - Subviews
+    private var inputCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundColor(.accentColor)
+                    .font(.system(size: 14))
+
+                Text("새로운 작업 / 백로그 추가")
+                    .font(.system(.subheadline, design: .rounded))
+                    .fontWeight(.semibold)
+
+                Spacer()
+
+                // 세부 메모 토글 버튼
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isCreatingExpanded.toggle()
+                    }
+                }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: isCreatingExpanded ? "chevron.up.circle" : "text.alignleft")
+                            .font(.system(size: 11))
+                        Text(isCreatingExpanded ? "상세 접기" : "상세 메모")
+                            .font(.system(size: 11))
+                    }
+                    .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 4)
+
+                // 우선순위 칩 선택기
+                Picker("우선순위", selection: $viewModel.newMemoPriority) {
+                    ForEach(MemoItem.Priority.allCases, id: \.self) { p in
+                        Text(p.rawValue).tag(p)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 170)
+            }
+
+            // 제목 입력란
+            HStack(spacing: 8) {
+                TextField("다음에 개발할 기능이나 수정할 버그를 입력하세요...", text: $viewModel.newMemoTitle)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .focused($isTitleFocused)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(isTitleFocused ? Color.accentColor : Color.primary.opacity(0.1), lineWidth: 1)
+                    )
+                    .onSubmit {
+                        submitNewMemo()
+                    }
+
+                Button(action: submitNewMemo) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.up.circle.fill")
+                        Text("등록")
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+                .disabled(viewModel.newMemoTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            // 상세 메모 (접이식 / 확장형)
+            if isCreatingExpanded || !viewModel.newMemoTitle.isEmpty {
+                TextField("상세 내용, 요구사항, 체크리스트, 참고 링크를 작성해 보세요 (선택사항)", text: $viewModel.newMemoContent, axis: .vertical)
+                    .lineLimit(2...5)
+                    .font(.system(size: 12))
+                    .textFieldStyle(.plain)
+                    .padding(10)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(14)
+        .glassCard(cornerRadius: 12)
+    }
+
+    private var dashboardHeader: some View {
+        VStack(spacing: 10) {
+            // 상단 타이틀 & 필터 탭
             HStack(alignment: .center) {
                 HStack(spacing: 6) {
+                    Image(systemName: "list.bullet.clipboard.fill")
+                        .font(.system(size: 15))
+                        .foregroundColor(.accentColor)
+
                     Text("업데이트 백로그")
                         .font(.system(.title3, design: .rounded))
                         .fontWeight(.bold)
 
-                    Text("\(viewModel.memos.count)")
+                    Text("\(allCount)")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
@@ -113,18 +160,20 @@ public struct MemoTimelineView: View {
 
                     // 전체 선택 / 해제 퀵 토글
                     if !filteredMemos.isEmpty {
+                        let currentFilterIds = filteredMemos.map { $0.id }
+                        let isAllSelected = viewModel.selectedMemoIds.isSuperset(of: currentFilterIds) && !currentFilterIds.isEmpty
+
                         Button(action: {
-                            let currentFilterIds = filteredMemos.map { $0.id }
-                            if viewModel.selectedMemoIds.isSuperset(of: currentFilterIds) {
+                            if isAllSelected {
                                 viewModel.clearSelection()
                             } else {
                                 viewModel.selectAll(ids: currentFilterIds)
                             }
                         }) {
                             HStack(spacing: 3) {
-                                Image(systemName: viewModel.selectedMemoIds.isSuperset(of: filteredMemos.map { $0.id }) ? "checkmark.square.fill" : "square")
+                                Image(systemName: isAllSelected ? "checkmark.circle.fill" : "circle")
                                     .font(.system(size: 11))
-                                Text(viewModel.selectedMemoIds.isSuperset(of: filteredMemos.map { $0.id }) ? "전체 해제" : "전체 선택")
+                                Text(isAllSelected ? "전체 해제" : "전체 선택")
                                     .font(.system(size: 11))
                             }
                             .foregroundColor(.secondary)
@@ -136,127 +185,200 @@ public struct MemoTimelineView: View {
 
                 Spacer()
 
-                // 완료 현황 요약
-                if !viewModel.memos.isEmpty {
-                    let completed = viewModel.memos.filter { $0.isCompleted }.count
-                    Text("완료 \(completed)/\(viewModel.memos.count)")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-
+                // 4-단계 세그먼트 필터
                 Picker("필터", selection: $memoFilter) {
-                    ForEach(MemoFilter.allCases) { filter in
-                        Text(filter.rawValue).tag(filter)
-                    }
+                    Text("전체 (\(allCount))").tag(MemoFilter.all)
+                    Text("대기 (\(pendingCount))").tag(MemoFilter.pending)
+                    Text("작업 중 (\(inProgressCount))").tag(MemoFilter.inProgress)
+                    Text("완료 (\(completedCount))").tag(MemoFilter.completed)
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 190)
+                .frame(width: 330)
             }
-            .padding(.top, 4)
 
-            // MARK: - 2-1. 선택된 메모 일괄 작업 액션 바 (선택 시 동적 표시)
-            if !viewModel.selectedMemoIds.isEmpty {
-                HStack(spacing: 10) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "checklist.checked")
-                            .foregroundColor(.accentColor)
-                            .font(.system(size: 13, weight: .bold))
+            // 진척도 진행 바
+            if allCount > 0 {
+                let progress = Double(completedCount) / Double(allCount)
+                let percent = Int(progress * 100)
 
-                        Text("\(viewModel.selectedMemoIds.count)개 메모 선택됨")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
-                    }
+                HStack(spacing: 12) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color.primary.opacity(0.08))
+                                .frame(height: 6)
 
-                    Spacer()
-
-                    // 선택 해제
-                    Button("선택 해제") {
-                        viewModel.clearSelection()
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-
-                    // 통합 프롬프트 복사
-                    Button(action: { viewModel.copyBatchPrompt() }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "doc.on.doc")
-                                .font(.system(size: 10))
-                            Text("통합 프롬프트 복사")
-                                .font(.system(size: 11))
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-
-                    // 완료 상태 토글
-                    Button(action: { Task { await viewModel.batchToggleCompletion() } }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "checkmark.circle")
-                                .font(.system(size: 10))
-                            Text("완료 토글")
-                                .font(.system(size: 11))
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-
-                    // 선택된 N개 항목 AI 작업수행 버튼 (기본 + 다른 AI 메뉴)
-                    HStack(spacing: 2) {
-                        Button(action: {
-                            Task { await viewModel.executeBatchTask(preset: nil) }
-                        }) {
-                            HStack(spacing: 5) {
-                                Image(systemName: viewModel.defaultAIPreset.iconName)
-                                    .font(.system(size: 11, weight: .bold))
-                                Text("선택한 \(viewModel.selectedMemoIds.count)개 작업수행 (\(viewModel.defaultAIPreset.shortName))")
-                                    .font(.system(size: 11, weight: .bold))
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-
-                        Menu {
-                            Text("다른 AI 에이전트로 일괄 실행")
-                                .font(.caption)
-
-                            Divider()
-
-                            ForEach(availablePresets(defaultPreset: viewModel.defaultAIPreset)) { preset in
-                                Button(action: {
-                                    Task { await viewModel.executeBatchTask(preset: preset) }
-                                }) {
-                                    Label(
-                                        preset == viewModel.defaultAIPreset ? "\(preset.rawValue) (기본)" : preset.rawValue,
-                                        systemImage: preset.iconName
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: completedCount == allCount
+                                            ? [AppTheme.activeGreen, AppTheme.activeGreen.opacity(0.85)]
+                                            : [Color.accentColor, Color.accentColor.opacity(0.75)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
                                     )
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 9, weight: .bold))
-                                .padding(.horizontal, 2)
+                                )
+                                .frame(width: max(0, min(geo.size.width * CGFloat(progress), geo.size.width)), height: 6)
+                                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: progress)
                         }
-                        .menuStyle(.borderlessButton)
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        .help("다른 AI 에이전트 선택")
+                    }
+                    .frame(height: 6)
+
+                    Text("\(completedCount)/\(allCount) 완료 (\(percent)%)")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(completedCount == allCount ? AppTheme.activeGreen : .secondary)
+                        .frame(width: 105, alignment: .trailing)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.primary.opacity(0.02))
+                .cornerRadius(6)
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private var batchActionBar: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles.rectangle.stack.fill")
+                    .foregroundColor(.accentColor)
+                    .font(.system(size: 13, weight: .bold))
+
+                Text("\(viewModel.selectedMemoIds.count)개 메모 선택됨")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+
+            Spacer()
+
+            // 선택 해제
+            Button("선택 해제") {
+                viewModel.clearSelection()
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 11))
+            .foregroundColor(.secondary)
+
+            // 통합 프롬프트 복사
+            Button(action: { viewModel.copyBatchPrompt() }) {
+                HStack(spacing: 3) {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 10))
+                    Text("통합 프롬프트 복사")
+                        .font(.system(size: 11))
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+
+            // 일괄 상태 변경 메뉴
+            Menu {
+                Text("선택 항목 상태 일괄 변경")
+                    .font(.caption)
+
+                Divider()
+
+                Button(action: { Task { await viewModel.batchUpdateStatus(.pending) } }) {
+                    Label("대기 중으로 변경", systemImage: "circle.dashed")
+                }
+
+                Button(action: { Task { await viewModel.batchUpdateStatus(.inProgress) } }) {
+                    Label("작업 중으로 변경", systemImage: "bolt.fill")
+                }
+
+                Button(action: { Task { await viewModel.batchUpdateStatus(.completed) } }) {
+                    Label("완료됨으로 변경", systemImage: "checkmark.circle.fill")
+                }
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 10))
+                    Text("상태 변경")
+                        .font(.system(size: 11))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8))
+                }
+            }
+            .menuStyle(.borderlessButton)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+
+            // 일괄 삭제
+            Button(action: {
+                Task {
+                    let newCount = await viewModel.batchDeleteSelectedMemos()
+                    onMemoCountChanged?(newCount)
+                }
+            }) {
+                HStack(spacing: 3) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10))
+                    Text("삭제")
+                        .font(.system(size: 11))
+                }
+                .foregroundColor(AppTheme.staleRose)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+
+            // 선택된 N개 항목 AI 작업수행 버튼
+            HStack(spacing: 2) {
+                Button(action: {
+                    Task { await viewModel.executeBatchTask(preset: nil) }
+                }) {
+                    HStack(spacing: 5) {
+                        Image(systemName: viewModel.defaultAIPreset.iconName)
+                            .font(.system(size: 11, weight: .bold))
+                        Text("일괄 실행 (\(viewModel.defaultAIPreset.shortName))")
+                            .font(.system(size: 11, weight: .bold))
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.08), radius: 6, y: 3)
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
 
-            // MARK: - 3. 메모 카드 목록
-            let displayMemos = filteredMemos
+                Menu {
+                    Text("다른 AI 에이전트로 일괄 실행")
+                        .font(.caption)
+
+                    Divider()
+
+                    ForEach(availablePresets(defaultPreset: viewModel.defaultAIPreset)) { preset in
+                        Button(action: {
+                            Task { await viewModel.executeBatchTask(preset: preset) }
+                        }) {
+                            Label(
+                                preset == viewModel.defaultAIPreset ? "\(preset.rawValue) (기본)" : preset.rawValue,
+                                systemImage: preset.iconName
+                            )
+                        }
+                    }
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 2)
+                }
+                .menuStyle(.borderlessButton)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .help("다른 AI 에이전트 선택")
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 6, y: 3)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private var memoList: some View {
+        let displayMemos = filteredMemos
+        return Group {
             if displayMemos.isEmpty {
                 VStack(spacing: 12) {
                     Spacer(minLength: 24)
@@ -275,7 +397,7 @@ public struct MemoTimelineView: View {
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: 340)
                     } else {
-                        Text("해당 필터에 맞는 메모가 없습니다.")
+                        Text("선택한 '\(memoFilter.rawValue)' 필터에 해당하는 메모가 없습니다.")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -297,6 +419,12 @@ public struct MemoTimelineView: View {
                             },
                             onToggle: {
                                 Task { await viewModel.toggleCompletion(for: memo) }
+                            },
+                            onUpdateStatus: { newStatus in
+                                Task { await viewModel.updateMemoStatus(for: memo, newStatus: newStatus) }
+                            },
+                            onUpdatePriority: { newPriority in
+                                Task { await viewModel.updateMemoPriority(for: memo, newPriority: newPriority) }
                             },
                             onUpdate: { updatedMemo in
                                 Task { await viewModel.updateMemo(updatedMemo) }
@@ -325,9 +453,11 @@ public struct MemoTimelineView: View {
         case .all:
             return viewModel.memos
         case .pending:
-            return viewModel.memos.filter { !$0.isCompleted }
+            return viewModel.memos.filter { $0.status == .pending }
+        case .inProgress:
+            return viewModel.memos.filter { $0.status == .inProgress }
         case .completed:
-            return viewModel.memos.filter { $0.isCompleted }
+            return viewModel.memos.filter { $0.status == .completed }
         }
     }
 
@@ -349,13 +479,15 @@ public struct MemoTimelineView: View {
     }
 }
 
-// MARK: - 모던 메모 카드 뷰
+// MARK: - 모던 메모 카드 뷰 (Apple HIG & UI UX Pro Max)
 public struct ModernMemoCardView: View {
     public let memo: MemoItem
     public let isSelected: Bool
     public let defaultPreset: AppSettings.AIAgentPreset
     public let onToggleSelect: () -> Void
     public let onToggle: () -> Void
+    public let onUpdateStatus: (MemoItem.Status) -> Void
+    public let onUpdatePriority: (MemoItem.Priority) -> Void
     public let onUpdate: (MemoItem) -> Void
     public let onExecuteTask: (AppSettings.AIAgentPreset?) -> Void
     public let onCopyPrompt: () -> Void
@@ -369,32 +501,33 @@ public struct ModernMemoCardView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 10) {
-                // 1. AI 작업 다중 선택 체크박스
-                Button(action: onToggleSelect) {
-                    Image(systemName: isSelected ? "checkmark.square.fill" : "square")
-                        .font(.system(size: 16))
-                        .foregroundColor(isSelected ? .accentColor : .secondary.opacity(0.4))
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 3)
-                .help(isSelected ? "선택 해제" : "AI 작업 대상으로 선택")
-
-                // 2. 완료 토글 버튼 (원형)
+                // 1. 단일 원형 완료 체크 버튼 (Apple Reminders 스타일)
                 Button(action: {
                     withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
                         onToggle()
                     }
                 }) {
-                    Image(systemName: memo.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 18))
-                        .foregroundColor(memo.isCompleted ? AppTheme.activeGreen : .secondary.opacity(0.7))
-                        .symbolRenderingMode(.hierarchical)
+                    ZStack {
+                        Circle()
+                            .strokeBorder(memo.isCompleted ? AppTheme.activeGreen : Color.secondary.opacity(0.35), lineWidth: 1.5)
+                            .frame(width: 18, height: 18)
+
+                        if memo.isCompleted {
+                            Circle()
+                                .fill(AppTheme.activeGreen)
+                                .frame(width: 18, height: 18)
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 2)
-                .help("완료 상태 토글")
+                .help(memo.isCompleted ? "미완료 상태로 변경" : "완료 상태로 변경")
 
-                // 본문 및 타이틀
+                // 2. 본문 및 헤더
                 if isEditing {
                     VStack(alignment: .leading, spacing: 6) {
                         TextField("제목 수정", text: $editedTitle)
@@ -427,19 +560,21 @@ public struct ModernMemoCardView: View {
                             Text(memo.title)
                                 .font(.system(.body, design: .rounded))
                                 .fontWeight(.semibold)
-                                .strikethrough(memo.isCompleted, color: .secondary)
+                                .strikethrough(memo.isCompleted, color: .secondary.opacity(0.7))
                                 .foregroundColor(memo.isCompleted ? .secondary : .primary)
 
-                            priorityPill(memo.priority)
+                            // 대화형 상태 뱃지 (클릭 시 상태 전환 메뉴)
+                            interactiveStatusMenu(memo.status)
 
-                            statusPill(memo.status)
+                            // 대화형 우선순위 뱃지 (클릭 시 우선순위 전환 메뉴)
+                            interactivePriorityMenu(memo.priority)
 
                             Spacer()
 
                             // 상대적 작성 시간
                             Text(AppTheme.relativeTimeString(from: memo.createdAt))
                                 .font(.system(size: 10))
-                                .foregroundColor(.secondary.opacity(0.8))
+                                .foregroundColor(.secondary.opacity(0.7))
 
                             // 액션 버튼 그룹 (편집, 삭제)
                             if isHovered {
@@ -472,7 +607,7 @@ public struct ModernMemoCardView: View {
                             Text(memo.content)
                                 .font(.system(size: 12))
                                 .foregroundColor(memo.isCompleted ? .secondary.opacity(0.6) : .secondary)
-                                .lineLimit(4)
+                                .lineLimit(isHovered ? 8 : 3)
                         }
                     }
                 }
@@ -481,6 +616,7 @@ public struct ModernMemoCardView: View {
             // MARK: - 하단 작업수행 Action Bar
             if !isEditing {
                 Divider()
+                    .opacity(0.4)
                     .padding(.top, 2)
 
                 HStack(spacing: 8) {
@@ -496,6 +632,27 @@ public struct ModernMemoCardView: View {
                     }
 
                     Spacer()
+
+                    // AI 일괄선택 토글 캡슐 버튼 (완료 체크와 완전히 분리)
+                    Button(action: onToggleSelect) {
+                        HStack(spacing: 4) {
+                            Image(systemName: isSelected ? "checkmark.circle.fill" : "sparkles")
+                                .font(.system(size: 10))
+                            Text(isSelected ? "선택됨" : "AI 일괄선택")
+                                .font(.system(size: 10, weight: isSelected ? .bold : .medium))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(isSelected ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.04))
+                        .foregroundColor(isSelected ? .accentColor : .secondary)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(isSelected ? Color.accentColor.opacity(0.45) : Color.primary.opacity(0.1), lineWidth: 0.8)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help(isSelected ? "선택 해제" : "여러 작업을 한 번에 AI로 실행하기 위해 선택")
 
                     // 프롬프트 복사 버튼
                     Button(action: onCopyPrompt) {
@@ -559,7 +716,7 @@ public struct ModernMemoCardView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1.5)
         )
-        .opacity(memo.isCompleted ? 0.78 : 1.0)
+        .opacity(memo.isCompleted ? 0.76 : 1.0)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 self.isHovered = hovering
@@ -567,37 +724,89 @@ public struct ModernMemoCardView: View {
         }
     }
 
-    private func priorityPill(_ priority: MemoItem.Priority) -> some View {
-        Text(priority.rawValue)
-            .font(.system(size: 9, weight: .bold, design: .rounded))
+    private func interactiveStatusMenu(_ currentStatus: MemoItem.Status) -> some View {
+        Menu {
+            Text("상태 변경")
+                .font(.caption)
+
+            Divider()
+
+            ForEach(MemoItem.Status.allCases, id: \.self) { st in
+                Button(action: {
+                    onUpdateStatus(st)
+                }) {
+                    HStack {
+                        if st == currentStatus {
+                            Image(systemName: "checkmark")
+                        }
+                        Text(st.rawValue)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Circle()
+                    .fill(statusColor(currentStatus))
+                    .frame(width: 5, height: 5)
+                Text(currentStatus.rawValue)
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 7, weight: .bold))
+                    .opacity(0.5)
+            }
             .padding(.horizontal, 6)
             .padding(.vertical, 2.5)
-            .background(priorityColor(priority).opacity(0.14))
-            .foregroundColor(priorityColor(priority))
+            .background(statusColor(currentStatus).opacity(0.12))
+            .foregroundColor(statusColor(currentStatus))
             .clipShape(Capsule())
             .overlay(
                 Capsule()
-                    .strokeBorder(priorityColor(priority).opacity(0.25), lineWidth: 0.6)
+                    .strokeBorder(statusColor(currentStatus).opacity(0.28), lineWidth: 0.6)
             )
+        }
+        .menuStyle(.borderlessButton)
+        .help("클릭하여 작업 상태 변경")
     }
 
-    private func statusPill(_ status: MemoItem.Status) -> some View {
-        HStack(spacing: 3) {
-            Circle()
-                .fill(statusColor(status))
-                .frame(width: 4, height: 4)
-            Text(status.rawValue)
-                .font(.system(size: 9, weight: .semibold, design: .rounded))
+    private func interactivePriorityMenu(_ currentPriority: MemoItem.Priority) -> some View {
+        Menu {
+            Text("우선순위 변경")
+                .font(.caption)
+
+            Divider()
+
+            ForEach(MemoItem.Priority.allCases, id: \.self) { pri in
+                Button(action: {
+                    onUpdatePriority(pri)
+                }) {
+                    HStack {
+                        if pri == currentPriority {
+                            Image(systemName: "checkmark")
+                        }
+                        Text(pri.rawValue)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Text(currentPriority.rawValue)
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 7, weight: .bold))
+                    .opacity(0.5)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2.5)
+            .background(priorityColor(currentPriority).opacity(0.14))
+            .foregroundColor(priorityColor(currentPriority))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .strokeBorder(priorityColor(currentPriority).opacity(0.28), lineWidth: 0.6)
+            )
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2.5)
-        .background(statusColor(status).opacity(0.12))
-        .foregroundColor(statusColor(status))
-        .clipShape(Capsule())
-        .overlay(
-            Capsule()
-                .strokeBorder(statusColor(status).opacity(0.25), lineWidth: 0.6)
-        )
+        .menuStyle(.borderlessButton)
+        .help("클릭하여 우선순위 변경")
     }
 
     private func statusColor(_ status: MemoItem.Status) -> Color {
