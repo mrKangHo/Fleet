@@ -14,6 +14,7 @@ public final class TerminalTabItem: ObservableObject, Identifiable, LocalProcess
 
     @Published public var title: String
     @Published public var preset: AppSettings.AIAgentPreset?
+    @Published public var profile: AppSettings.TerminalApp
     @Published public var isRunning: Bool = false
     @Published public var exitCode: Int32? = nil
     @Published public var hasExecutedTask: Bool = false
@@ -24,13 +25,15 @@ public final class TerminalTabItem: ObservableObject, Identifiable, LocalProcess
         repositoryName: String,
         workingDirectory: String,
         preset: AppSettings.AIAgentPreset? = nil,
-        customTitle: String? = nil
+        customTitle: String? = nil,
+        profile: AppSettings.TerminalApp = .iTerm
     ) {
         self.id = id
         self.repositoryId = repositoryId
         self.repositoryName = repositoryName
         self.workingDirectory = workingDirectory
         self.preset = preset
+        self.profile = profile
         self.createdAt = Date()
 
         if let custom = customTitle, !custom.isEmpty {
@@ -43,15 +46,46 @@ public final class TerminalTabItem: ObservableObject, Identifiable, LocalProcess
 
         let options = TerminalOptions.default
         let view = LocalProcessTerminalView(frame: .zero, options: options)
-        view.font = NSFont.monospacedSystemFont(ofSize: 12.5, weight: .regular)
-        view.nativeBackgroundColor = NSColor(calibratedRed: 0.11, green: 0.12, blue: 0.15, alpha: 1.0)
-        view.nativeForegroundColor = NSColor(calibratedWhite: 0.92, alpha: 1.0)
-        view.caretColor = NSColor.systemTeal
-
         self.terminalView = view
         view.processDelegate = self
 
+        applyProfile(profile)
         startShell()
+    }
+
+    /// 선택된 터미널 프로필(iTerm2, VS Code, Terminal, Ghostty) 스타일을 실시간으로 뷰에 적용
+    public func applyProfile(_ newProfile: AppSettings.TerminalApp) {
+        self.profile = newProfile
+        switch newProfile {
+        case .iTerm:
+            // iTerm2 Dark 스타일: iTerm 특유의 진한 네이비/차콜 배경, Menlo 폰트, 시그니처 앰버 커서
+            terminalView.nativeBackgroundColor = NSColor(calibratedRed: 0.09, green: 0.09, blue: 0.12, alpha: 1.0)
+            terminalView.nativeForegroundColor = NSColor(calibratedWhite: 0.93, alpha: 1.0)
+            terminalView.caretColor = NSColor(calibratedRed: 0.98, green: 0.65, blue: 0.15, alpha: 1.0)
+            terminalView.font = NSFont(name: "Menlo-Regular", size: 12.5) ?? NSFont.monospacedSystemFont(ofSize: 12.5, weight: .regular)
+
+        case .embedded:
+            // VS Code 다크 스타일: VS Code Modern 테마 딥그레이 배경, SF Mono, 청록(Teal) 커서
+            terminalView.nativeBackgroundColor = NSColor(calibratedRed: 0.11, green: 0.12, blue: 0.15, alpha: 1.0)
+            terminalView.nativeForegroundColor = NSColor(calibratedWhite: 0.92, alpha: 1.0)
+            terminalView.caretColor = NSColor.systemTeal
+            terminalView.font = NSFont.monospacedSystemFont(ofSize: 12.5, weight: .regular)
+
+        case .terminal:
+            // macOS Terminal Pro 스타일: 피치 블랙 배경, SF Mono, 고대비 화이트 블록 커서
+            terminalView.nativeBackgroundColor = NSColor(calibratedRed: 0.02, green: 0.02, blue: 0.03, alpha: 1.0)
+            terminalView.nativeForegroundColor = NSColor(calibratedWhite: 0.96, alpha: 1.0)
+            terminalView.caretColor = NSColor.white
+            terminalView.font = NSFont(name: "SFMono-Regular", size: 12.5) ?? NSFont.monospacedSystemFont(ofSize: 12.5, weight: .regular)
+
+        case .ghostty:
+            // Ghostty 스타일: 뉴트럴 딥다크 배경, SF Mono, 바이올렛 커서
+            terminalView.nativeBackgroundColor = NSColor(calibratedRed: 0.06, green: 0.06, blue: 0.08, alpha: 1.0)
+            terminalView.nativeForegroundColor = NSColor(calibratedWhite: 0.94, alpha: 1.0)
+            terminalView.caretColor = NSColor(calibratedRed: 0.65, green: 0.40, blue: 0.95, alpha: 1.0)
+            terminalView.font = NSFont.monospacedSystemFont(ofSize: 12.5, weight: .regular)
+        }
+        terminalView.needsDisplay = true
     }
 
     public func startShell() {
@@ -75,6 +109,10 @@ public final class TerminalTabItem: ObservableObject, Identifiable, LocalProcess
         env["LANG"] = "ko_KR.UTF-8"
         env["LC_ALL"] = "ko_KR.UTF-8"
         env["WORKMANAGER_REPO"] = repositoryName
+        env["TERM_PROGRAM"] = profile.termProgramEnv
+        if profile == .iTerm {
+            env["TERM_PROGRAM_VERSION"] = "3.5.0"
+        }
 
         let envArray = env.map { "\($0.key)=\($0.value)" }
 
@@ -190,7 +228,12 @@ public final class RepositoryTerminalGroup: ObservableObject, Identifiable {
     }
 
     @discardableResult
-    public func createTab(preset: AppSettings.AIAgentPreset? = nil, customTitle: String? = nil, autoSelect: Bool = true) -> TerminalTabItem {
+    public func createTab(
+        preset: AppSettings.AIAgentPreset? = nil,
+        customTitle: String? = nil,
+        profile: AppSettings.TerminalApp? = nil,
+        autoSelect: Bool = true
+    ) -> TerminalTabItem {
         let countForPreset = tabs.filter { $0.preset == preset }.count
         let finalTitle: String
         if let custom = customTitle {
@@ -202,12 +245,15 @@ public final class RepositoryTerminalGroup: ObservableObject, Identifiable {
             finalTitle = zshCount > 0 ? "터미널 \(zshCount + 1)" : "터미널"
         }
 
+        let effectiveProfile = profile ?? TerminalSessionManager.shared.currentProfile
+
         let newTab = TerminalTabItem(
             repositoryId: id,
             repositoryName: repositoryName,
             workingDirectory: workingDirectory,
             preset: preset,
-            customTitle: finalTitle
+            customTitle: finalTitle,
+            profile: effectiveProfile
         )
 
         tabs.append(newTab)
@@ -215,6 +261,12 @@ public final class RepositoryTerminalGroup: ObservableObject, Identifiable {
             activeTabId = newTab.id
         }
         return newTab
+    }
+
+    public func updateProfileForAllTabs(_ profile: AppSettings.TerminalApp) {
+        for tab in tabs {
+            tab.applyProfile(profile)
+        }
     }
 
     public func closeTab(id: UUID) {
@@ -257,11 +309,32 @@ public final class TerminalSessionManager: ObservableObject, @unchecked Sendable
     @Published public var panelHeight: CGFloat = 270
     @Published public var isMaximized: Bool = false
     @Published public var activeRepositoryId: Int? = nil
+    @Published public var currentProfile: AppSettings.TerminalApp = .iTerm
 
     private var groups: [Int: RepositoryTerminalGroup] = [:]
     private let lock = NSLock()
 
     public init() {}
+
+    /// 전체 열려 있는 터미널 탭에 새로운 프로필(iTerm2, VS Code 등)을 실시간 일괄 반영
+    public func applyTerminalProfile(_ profile: AppSettings.TerminalApp) {
+        lock.lock()
+        self.currentProfile = profile
+        let allGroups = Array(groups.values)
+        lock.unlock()
+
+        if Thread.isMainThread {
+            for group in allGroups {
+                group.updateProfileForAllTabs(profile)
+            }
+        } else {
+            DispatchQueue.main.async {
+                for group in allGroups {
+                    group.updateProfileForAllTabs(profile)
+                }
+            }
+        }
+    }
 
     public func getOrCreateGroup(for repositoryId: Int, name: String, localPath: String?) -> RepositoryTerminalGroup {
         lock.lock()
@@ -274,7 +347,7 @@ public final class TerminalSessionManager: ObservableObject, @unchecked Sendable
                 existing.updateWorkingDirectoryIfNeeded(path)
             }
             if existing.tabs.isEmpty {
-                _ = existing.createTab()
+                _ = existing.createTab(profile: currentProfile)
             }
             return existing
         }
@@ -285,7 +358,7 @@ public final class TerminalSessionManager: ObservableObject, @unchecked Sendable
             workingDirectory: resolvedPath
         )
         // 기본 터미널 탭 생성
-        _ = newGroup.createTab()
+        _ = newGroup.createTab(profile: currentProfile)
         groups[repositoryId] = newGroup
         return newGroup
     }
@@ -299,7 +372,7 @@ public final class TerminalSessionManager: ObservableObject, @unchecked Sendable
     /// 하위 호환성 메서드 (기존 단일 세션 반환)
     public func getOrCreateSession(for repositoryId: Int, name: String, localPath: String?) -> RepositoryTerminalSession {
         let grp = getOrCreateGroup(for: repositoryId, name: name, localPath: localPath)
-        return grp.activeTab ?? grp.createTab()
+        return grp.activeTab ?? grp.createTab(profile: currentProfile)
     }
 
     /// 하위 호환성 메서드
@@ -335,8 +408,10 @@ public final class TerminalSessionManager: ObservableObject, @unchecked Sendable
         repositoryId: Int,
         name: String,
         localPath: String?,
-        preset: AppSettings.AIAgentPreset? = nil
+        preset: AppSettings.AIAgentPreset? = nil,
+        profile: AppSettings.TerminalApp? = nil
     ) {
+        let activeProfile = profile ?? currentProfile
         let group = getOrCreateGroup(for: repositoryId, name: name, localPath: localPath)
         openPanel(for: repositoryId, name: name, localPath: localPath)
 
@@ -347,21 +422,22 @@ public final class TerminalSessionManager: ObservableObject, @unchecked Sendable
             // 2. 현재 탭의 preset이 설정되어 있고, 이번 요청 preset과 다른 경우 (A agent 작업 후 B agent 작업 시 새 탭)
             // 3. 현재 탭이 이미 어떤 에이전트 작업을 수행한 적이 있고(hasExecutedTask), 이번 요청 프리셋과 불일치하는 경우
             if current.isRunning {
-                targetTab = group.createTab(preset: preset, autoSelect: true)
+                targetTab = group.createTab(preset: preset, profile: activeProfile, autoSelect: true)
             } else if let currentPreset = current.preset, let newPreset = preset, currentPreset != newPreset {
-                targetTab = group.createTab(preset: newPreset, autoSelect: true)
+                targetTab = group.createTab(preset: newPreset, profile: activeProfile, autoSelect: true)
             } else if current.hasExecutedTask && current.preset != preset {
-                targetTab = group.createTab(preset: preset, autoSelect: true)
+                targetTab = group.createTab(preset: preset, profile: activeProfile, autoSelect: true)
             } else {
                 // 기존 유휴 탭 재사용
                 if let p = preset {
                     current.preset = p
                     current.title = p.shortName
                 }
+                current.applyProfile(activeProfile)
                 targetTab = current
             }
         } else {
-            targetTab = group.createTab(preset: preset, autoSelect: true)
+            targetTab = group.createTab(preset: preset, profile: activeProfile, autoSelect: true)
         }
 
         targetTab.hasExecutedTask = true

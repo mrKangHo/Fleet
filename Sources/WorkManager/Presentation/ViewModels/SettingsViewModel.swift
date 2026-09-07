@@ -26,6 +26,7 @@ public final class SettingsViewModel: ObservableObject {
             settings.ignoredRepoIds = []
         }
         environment.settingsRepository.saveSettings(settings)
+        environment.terminalSessionManager.applyTerminalProfile(settings.terminalApp)
     }
 
     public func testToken() async {

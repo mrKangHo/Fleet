@@ -43,6 +43,9 @@ public final class AppEnvironment: Sendable {
         self.terminalExecutionService = terminalExecutionService
         self.terminalSessionManager = terminalSessionManager
 
+        let initialSettings = settingsRepository.loadSettings()
+        terminalSessionManager.currentProfile = initialSettings.terminalApp
+
         let staleUseCase = CalculateStaleStatusUseCase()
         self.calculateStaleStatusUseCase = staleUseCase
         self.fetchRepositoriesUseCase = FetchRepositoriesUseCase(

@@ -78,11 +78,31 @@ public struct AppSettings: Codable, Hashable, Sendable {
         }
     }
 
-    public enum TerminalApp: String, Codable, CaseIterable, Sendable {
-        case embedded = "앱 내장 터미널 (VS Code 스타일)"
-        case terminal = "macOS Terminal"
-        case iTerm = "iTerm2"
-        case ghostty = "Ghostty"
+    public enum TerminalApp: String, Codable, CaseIterable, Sendable, Identifiable {
+        case iTerm = "iTerm2 스타일 (추천)"
+        case embedded = "VS Code 다크 스타일"
+        case terminal = "macOS Terminal 스타일"
+        case ghostty = "Ghostty 스타일"
+
+        public var id: String { rawValue }
+
+        public var shortName: String {
+            switch self {
+            case .iTerm: return "iTerm2"
+            case .embedded: return "VS Code"
+            case .terminal: return "Terminal"
+            case .ghostty: return "Ghostty"
+            }
+        }
+
+        public var termProgramEnv: String {
+            switch self {
+            case .iTerm: return "iTerm.app"
+            case .embedded: return "vscode"
+            case .terminal: return "Apple_Terminal"
+            case .ghostty: return "ghostty"
+            }
+        }
 
         public var bundleIdentifier: String {
             switch self {
@@ -96,16 +116,16 @@ public struct AppSettings: Codable, Hashable, Sendable {
             let container = try decoder.singleValueContainer()
             let rawString = (try? container.decode(String.self)) ?? ""
             switch rawString {
-            case "앱 내장 터미널 (VS Code 스타일)", "앱 내장 터미널 (추천)", "embedded":
-                self = .embedded
-            case "macOS Terminal", "Terminal":
-                self = .terminal
-            case "iTerm2", "iTerm":
+            case "iTerm2", "iTerm", "iTerm2 스타일", "iTerm2 스타일 (추천)":
                 self = .iTerm
-            case "Ghostty", "ghostty":
+            case "앱 내장 터미널 (VS Code 스타일)", "앱 내장 터미널 (추천)", "VS Code 다크 스타일", "embedded":
+                self = .embedded
+            case "macOS Terminal", "Terminal", "macOS Terminal 스타일":
+                self = .terminal
+            case "Ghostty", "ghostty", "Ghostty 스타일":
                 self = .ghostty
             default:
-                self = .embedded
+                self = .iTerm
             }
         }
     }
@@ -145,7 +165,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         aiAgentPreset: AIAgentPreset = .claude,
         dangerouslySkipPermissions: Bool = true,
         customCliTemplate: String = "claude --dangerously-skip-permissions \"{prompt}\"",
-        terminalApp: TerminalApp = .embedded,
+        terminalApp: TerminalApp = .iTerm,
         defaultProjectsDirectory: String = "~/Documents",
         customPromptTemplate: String = """
 [작업 목표] {memo_title}
@@ -190,7 +210,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.aiAgentPreset = try container.decodeIfPresent(AIAgentPreset.self, forKey: .aiAgentPreset) ?? .claude
         self.dangerouslySkipPermissions = try container.decodeIfPresent(Bool.self, forKey: .dangerouslySkipPermissions) ?? true
         self.customCliTemplate = try container.decodeIfPresent(String.self, forKey: .customCliTemplate) ?? "claude --dangerously-skip-permissions \"{prompt}\""
-        self.terminalApp = try container.decodeIfPresent(TerminalApp.self, forKey: .terminalApp) ?? .embedded
+        self.terminalApp = try container.decodeIfPresent(TerminalApp.self, forKey: .terminalApp) ?? .iTerm
         self.defaultProjectsDirectory = try container.decodeIfPresent(String.self, forKey: .defaultProjectsDirectory) ?? "~/Documents"
         self.customPromptTemplate = try container.decodeIfPresent(String.self, forKey: .customPromptTemplate) ?? """
 [작업 목표] {memo_title}

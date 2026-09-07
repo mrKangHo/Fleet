@@ -246,4 +246,27 @@ final class TerminalMultiTabTests: XCTestCase {
         XCTAssertEqual(group.tabs.count, 1)
         XCTAssertEqual(group.tabs[0].title, "터미널")
     }
+
+    func testTerminalProfileStylingAndDynamicUpdate() {
+        let group = manager.getOrCreateGroup(for: 999, name: "TestRepo", localPath: "/tmp")
+        let tab = group.activeTab
+        XCTAssertNotNil(tab)
+
+        // 1. 기본 프로필 iTerm2 스타일 검증
+        tab?.applyProfile(.iTerm)
+        XCTAssertEqual(tab?.profile, .iTerm)
+        XCTAssertEqual(tab?.profile.termProgramEnv, "iTerm.app")
+
+        // 2. VS Code 프로필 변경 검증
+        tab?.applyProfile(.embedded)
+        XCTAssertEqual(tab?.profile, .embedded)
+        XCTAssertEqual(tab?.profile.termProgramEnv, "vscode")
+        XCTAssertEqual(tab?.terminalView.caretColor, NSColor.systemTeal)
+
+        // 3. TerminalSessionManager 전체 프로필 일괄 적용 검증
+        manager.applyTerminalProfile(.terminal)
+        XCTAssertEqual(manager.currentProfile, .terminal)
+        XCTAssertEqual(tab?.profile, .terminal)
+        XCTAssertEqual(tab?.terminalView.caretColor, NSColor.white)
+    }
 }

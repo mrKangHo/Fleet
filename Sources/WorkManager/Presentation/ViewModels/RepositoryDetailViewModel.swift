@@ -227,42 +227,28 @@ public final class RepositoryDetailViewModel: ObservableObject {
         let activePreset = preset ?? settings.aiAgentPreset
 
         do {
-            if settings.terminalApp == .embedded {
-                let prompt = environment.executeAgentTaskUseCase.buildPrompt(repository: repo, memo: memo, template: settings.customPromptTemplate)
-                let command = environment.executeAgentTaskUseCase.buildCommand(prompt: prompt, settings: settings, overridePreset: preset)
+            let prompt = environment.executeAgentTaskUseCase.buildPrompt(repository: repo, memo: memo, template: settings.customPromptTemplate)
+            let command = environment.executeAgentTaskUseCase.buildCommand(prompt: prompt, settings: settings, overridePreset: preset)
 
-                environment.terminalSessionManager.executeCommand(
-                    command: command,
-                    repositoryId: repo.id,
-                    name: repo.name,
-                    localPath: validPath,
-                    preset: activePreset
-                )
+            environment.terminalSessionManager.executeCommand(
+                command: command,
+                repositoryId: repo.id,
+                name: repo.name,
+                localPath: validPath,
+                preset: activePreset,
+                profile: settings.terminalApp
+            )
 
-                var updatedMemo = memo
-                updatedMemo.status = .inProgress
-                updatedMemo.lastExecutedAt = Date()
-                updatedMemo.updatedAt = Date()
-                try await environment.memoRepository.saveMemo(updatedMemo)
+            var updatedMemo = memo
+            updatedMemo.status = .inProgress
+            updatedMemo.lastExecutedAt = Date()
+            updatedMemo.updatedAt = Date()
+            try await environment.memoRepository.saveMemo(updatedMemo)
 
-                if let index = memos.firstIndex(where: { $0.id == memo.id }) {
-                    memos[index] = updatedMemo
-                }
-                self.successMessage = "하단 터미널에서 [\(activePreset.shortName)] 작업을 시작했습니다!"
-            } else {
-                let updated = try await environment.executeAgentTaskUseCase.execute(
-                    repository: repo,
-                    memo: memo,
-                    localPath: validPath,
-                    settings: settings,
-                    overridePreset: preset
-                )
-
-                if let index = memos.firstIndex(where: { $0.id == memo.id }) {
-                    memos[index] = updated
-                }
-                self.successMessage = "터미널에서 [\(activePreset.shortName)] 작업을 시작했습니다!"
+            if let index = memos.firstIndex(where: { $0.id == memo.id }) {
+                memos[index] = updatedMemo
             }
+            self.successMessage = "[\(settings.terminalApp.shortName)] 내장 터미널에서 [\(activePreset.shortName)] 작업을 시작했습니다!"
         } catch {
             self.errorMessage = "작업 실행 실패: \(error.localizedDescription)"
         }
@@ -319,48 +305,30 @@ public final class RepositoryDetailViewModel: ObservableObject {
         let activePreset = preset ?? settings.aiAgentPreset
 
         do {
-            if settings.terminalApp == .embedded {
-                let prompt = environment.executeAgentTaskUseCase.buildBatchPrompt(repository: repo, memos: targets, template: settings.customPromptTemplate)
-                let command = environment.executeAgentTaskUseCase.buildCommand(prompt: prompt, settings: settings, overridePreset: preset)
+            let prompt = environment.executeAgentTaskUseCase.buildBatchPrompt(repository: repo, memos: targets, template: settings.customPromptTemplate)
+            let command = environment.executeAgentTaskUseCase.buildCommand(prompt: prompt, settings: settings, overridePreset: preset)
 
-                environment.terminalSessionManager.executeCommand(
-                    command: command,
-                    repositoryId: repo.id,
-                    name: repo.name,
-                    localPath: validPath,
-                    preset: activePreset
-                )
+            environment.terminalSessionManager.executeCommand(
+                command: command,
+                repositoryId: repo.id,
+                name: repo.name,
+                localPath: validPath,
+                preset: activePreset,
+                profile: settings.terminalApp
+            )
 
-                let now = Date()
-                for var memo in targets {
-                    memo.status = .inProgress
-                    memo.lastExecutedAt = now
-                    memo.updatedAt = now
-                    try await environment.memoRepository.saveMemo(memo)
-                    if let index = memos.firstIndex(where: { $0.id == memo.id }) {
-                        memos[index] = memo
-                    }
+            let now = Date()
+            for var memo in targets {
+                memo.status = .inProgress
+                memo.lastExecutedAt = now
+                memo.updatedAt = now
+                try await environment.memoRepository.saveMemo(memo)
+                if let index = memos.firstIndex(where: { $0.id == memo.id }) {
+                    memos[index] = memo
                 }
-
-                self.successMessage = "하단 터미널에서 선택한 \(targets.count)개 항목에 대해 [\(activePreset.shortName)] 작업을 시작했습니다!"
-            } else {
-                let updatedList = try await environment.executeAgentTaskUseCase.executeBatch(
-                    repository: repo,
-                    memos: targets,
-                    localPath: validPath,
-                    settings: settings,
-                    overridePreset: preset
-                )
-
-                // 로컬 메모 리스트 갱신
-                for updated in updatedList {
-                    if let index = memos.firstIndex(where: { $0.id == updated.id }) {
-                        memos[index] = updated
-                    }
-                }
-
-                self.successMessage = "터미널에서 선택한 \(targets.count)개 항목에 대해 [\(activePreset.shortName)] 작업을 시작했습니다!"
             }
+
+            self.successMessage = "[\(settings.terminalApp.shortName)] 내장 터미널에서 선택한 \(targets.count)개 항목에 대해 [\(activePreset.shortName)] 작업을 시작했습니다!"
         } catch {
             self.errorMessage = "일괄 작업 실행 실패: \(error.localizedDescription)"
         }

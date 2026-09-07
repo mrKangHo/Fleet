@@ -63,7 +63,7 @@ public struct VSCodeTerminalPanelView: View {
             if let activeTab = group.activeTab {
                 SwiftUITerminalView(tab: activeTab)
                     .id(activeTab.id)
-                    .background(Color(nsColor: NSColor(calibratedRed: 0.11, green: 0.12, blue: 0.15, alpha: 1.0)))
+                    .background(Color(nsColor: activeTab.terminalView.nativeBackgroundColor))
             } else {
                 emptyTabsPlaceholder
             }

@@ -15,12 +15,12 @@ public final class SettingsRepositoryImpl: SettingsRepositoryProtocol, @unchecke
             return .default
         }
 
-        // 터미널 앱: 하단 내장 터미널(.embedded)로 전환 마이그레이션
-        let migrationKey = "workmanager_has_migrated_to_embedded_vscode_terminal_v1"
+        // 터미널 앱: 내장 터미널 추천 프로필(iTerm2 스타일)로 최신화 마이그레이션
+        let migrationKey = "workmanager_has_migrated_to_iterm_profile_v2"
         if !userDefaults.bool(forKey: migrationKey) {
             userDefaults.set(true, forKey: migrationKey)
             var migrated = settings
-            migrated.terminalApp = .embedded
+            migrated.terminalApp = .iTerm
             saveSettings(migrated)
             return migrated
         }
