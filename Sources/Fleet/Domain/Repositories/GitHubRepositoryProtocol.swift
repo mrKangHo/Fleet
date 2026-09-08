@@ -13,4 +13,10 @@ public protocol GitHubRepositoryProtocol: Sendable {
 
     /// 사용자 토큰 유효성, 계정명, repo 권한 유무를 상세 확인합니다.
     func validateTokenWithScopes(token: String) async throws -> (username: String, hasRepoScope: Bool)
+
+    /// GitHub에 새 저장소를 생성합니다.
+    func createRepository(token: String, name: String, description: String?, isPrivate: Bool) async throws -> RepositoryItem
+
+    /// GitHub에서 저장소를 영구 삭제합니다.
+    func deleteRepository(token: String, owner: String, repo: String) async throws
 }
