@@ -9,6 +9,7 @@ public final class AppEnvironment: Sendable {
     public let memoRepository: MemoRepositoryProtocol
     public let settingsRepository: SettingsRepositoryProtocol
     public let localPathRepository: LocalPathRepositoryProtocol
+    public let repositoryGuidelineRepository: RepositoryGuidelineRepositoryProtocol
 
     // MARK: - Services
     public let dockBadgeService: DockBadgeServiceProtocol
@@ -23,12 +24,15 @@ public final class AppEnvironment: Sendable {
     public let updateDockBadgeUseCase: UpdateDockBadgeUseCase
     public let scheduleNotificationUseCase: ScheduleNotificationUseCase
     public let executeAgentTaskUseCase: ExecuteAgentTaskUseCase
+    public let manageRepositoryUseCase: ManageRepositoryUseCase
+    public let manageRepositoryGuidelineUseCase: ManageRepositoryGuidelineUseCase
 
     public init(
         githubRepository: GitHubRepositoryProtocol = GitHubRepositoryImpl(),
         memoRepository: MemoRepositoryProtocol = MemoRepositoryImpl(),
         settingsRepository: SettingsRepositoryProtocol = SettingsRepositoryImpl(),
         localPathRepository: LocalPathRepositoryProtocol = LocalPathRepositoryImpl(),
+        repositoryGuidelineRepository: RepositoryGuidelineRepositoryProtocol = RepositoryGuidelineRepositoryImpl(),
         dockBadgeService: DockBadgeServiceProtocol = DockBadgeManager(),
         notificationService: SystemNotificationServiceProtocol = NotificationManager(),
         terminalExecutionService: TerminalExecutionServiceProtocol = TerminalExecutionService(),
@@ -38,6 +42,7 @@ public final class AppEnvironment: Sendable {
         self.memoRepository = memoRepository
         self.settingsRepository = settingsRepository
         self.localPathRepository = localPathRepository
+        self.repositoryGuidelineRepository = repositoryGuidelineRepository
         self.dockBadgeService = dockBadgeService
         self.notificationService = notificationService
         self.terminalExecutionService = terminalExecutionService
@@ -64,6 +69,15 @@ public final class AppEnvironment: Sendable {
         self.executeAgentTaskUseCase = ExecuteAgentTaskUseCase(
             terminalService: terminalExecutionService,
             memoRepository: memoRepository
+        )
+        self.manageRepositoryUseCase = ManageRepositoryUseCase(
+            githubRepository: githubRepository,
+            settingsRepository: settingsRepository,
+            localPathRepository: localPathRepository,
+            memoRepository: memoRepository
+        )
+        self.manageRepositoryGuidelineUseCase = ManageRepositoryGuidelineUseCase(
+            guidelineRepository: repositoryGuidelineRepository
         )
     }
 }

@@ -70,6 +70,18 @@ public struct MainSplitView: View {
             RepositorySelectionSheet(viewModel: listViewModel)
                 .environment(\.locale, appLocale)
         }
+        .sheet(isPresented: $listViewModel.isCreateRepoSheetPresented) {
+            CreateRepositorySheetView(viewModel: listViewModel)
+                .environment(\.locale, appLocale)
+        }
+        .sheet(item: $listViewModel.repositoryPendingDeletion) { repo in
+            DeleteRepositoryConfirmationView(viewModel: listViewModel, repository: repo)
+                .environment(\.locale, appLocale)
+        }
+        .sheet(isPresented: $detailViewModel.isGuidelineSheetPresented) {
+            RepositoryGuidelineSettingsView(viewModel: detailViewModel)
+                .environment(\.locale, appLocale)
+        }
         .onChange(of: listViewModel.selectedRepositoryId) { _, newId in
             if let newId = newId,
                let repo = listViewModel.repositories.first(where: { $0.id == newId }) {

@@ -174,6 +174,20 @@ public struct AppSettings: Codable, Hashable, Sendable {
             default: return "⌥ ↵"
             }
         }
+
+        /// 이 AI 에이전트가 저장소 루트에서 실제로 읽는 지침(규칙) 파일명
+        public var guidelineFileName: String {
+            switch self {
+            case .claude: return "CLAUDE.md"
+            case .codex: return "AGENTS.md"
+            case .antigravity: return "AGENTS.md"
+            case .cursor: return ".cursorrules"
+            case .aider: return "CONVENTIONS.md"
+            case .goose: return ".goosehints"
+            case .openhands: return "AGENTS.md"
+            case .custom: return "AGENTS.md"
+            }
+        }
     }
 
     public enum TerminalApp: String, Codable, CaseIterable, Sendable, Identifiable {

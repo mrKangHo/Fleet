@@ -15,6 +15,11 @@ public final class RepositoryDetailViewModel: ObservableObject {
     @Published public var successMessage: String?
     @Published public var errorMessage: String?
 
+    // MARK: - AI Guideline State
+    @Published public var isGuidelineSheetPresented: Bool = false
+    @Published public var guidelineSelectedPreset: AppSettings.AIAgentPreset = .claude
+    @Published public var guidelineContent: String = ""
+
     // 인라인 메모 입력 상태
     @Published public var newMemoTitle: String = ""
     @Published public var newMemoContent: String = ""
@@ -300,6 +305,57 @@ public final class RepositoryDetailViewModel: ObservableObject {
             self.successMessage = "[\(appName)]에서 프로젝트 폴더를 열었습니다."
         } catch {
             self.errorMessage = "\(appName) 실행 실패: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - AI Guideline Management
+    public func openGuidelineSettings() {
+        if localDirectoryPath == nil || !FileManager.default.fileExists(atPath: localDirectoryPath!) {
+            chooseLocalFolder()
+        }
+        guard let path = localDirectoryPath, FileManager.default.fileExists(atPath: path) else {
+            self.errorMessage = "지침을 설정할 로컬 폴더를 먼저 지정해 주세요."
+            return
+        }
+        guidelineSelectedPreset = environment.settingsRepository.loadSettings().aiAgentPreset
+        loadGuideline(for: guidelineSelectedPreset, localPath: path)
+        isGuidelineSheetPresented = true
+    }
+
+    public func selectGuidelinePreset(_ preset: AppSettings.AIAgentPreset) {
+        guard let path = localDirectoryPath else { return }
+        guidelineSelectedPreset = preset
+        loadGuideline(for: preset, localPath: path)
+    }
+
+    private func loadGuideline(for preset: AppSettings.AIAgentPreset, localPath: String) {
+        guidelineContent = environment.manageRepositoryGuidelineUseCase.loadGuideline(localPath: localPath, preset: preset) ?? ""
+    }
+
+    public func guidelineFilePath(for preset: AppSettings.AIAgentPreset) -> String? {
+        guard let path = localDirectoryPath else { return nil }
+        return environment.manageRepositoryGuidelineUseCase.filePath(localPath: path, preset: preset)
+    }
+
+    public func guidelineExists(for preset: AppSettings.AIAgentPreset) -> Bool {
+        guard let path = localDirectoryPath else { return false }
+        return environment.manageRepositoryGuidelineUseCase.guidelineExists(localPath: path, preset: preset)
+    }
+
+    public func saveGuideline() {
+        guard let path = localDirectoryPath else {
+            self.errorMessage = "지침을 저장할 로컬 폴더를 먼저 지정해 주세요."
+            return
+        }
+        do {
+            try environment.manageRepositoryGuidelineUseCase.saveGuideline(
+                localPath: path,
+                preset: guidelineSelectedPreset,
+                content: guidelineContent
+            )
+            self.successMessage = "[\(guidelineSelectedPreset.shortName)] 지침이 저장되었습니다."
+        } catch {
+            self.errorMessage = "지침 저장 실패: \(error.localizedDescription)"
         }
     }
 

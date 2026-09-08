@@ -20,6 +20,12 @@ public final class LocalPathRepositoryImpl: LocalPathRepositoryProtocol, @unchec
         userDefaults.set(dict, forKey: key)
     }
 
+    public func removeLocalPath(for repositoryId: Int) {
+        var dict = userDefaults.dictionary(forKey: key) as? [String: String] ?? [:]
+        dict.removeValue(forKey: "\(repositoryId)")
+        userDefaults.set(dict, forKey: key)
+    }
+
     public func detectLocalPath(for repoName: String, baseDirectories: [String]) -> String? {
         let fileManager = FileManager.default
         let home = fileManager.homeDirectoryForCurrentUser.path

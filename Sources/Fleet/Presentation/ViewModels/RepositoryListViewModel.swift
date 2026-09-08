@@ -39,6 +39,11 @@ public final class RepositoryListViewModel: ObservableObject {
     @Published public var currentSettings: AppSettings = .default
     @Published public var authenticatedUser: String?
 
+    // MARK: - Repository Create/Delete State
+    @Published public var isCreateRepoSheetPresented: Bool = false
+    @Published public var repositoryPendingDeletion: RepositoryItem?
+    @Published public var isMutatingRepository: Bool = false
+
     public init(environment: AppEnvironment = .shared) {
         self.environment = environment
         self.currentSettings = environment.settingsRepository.loadSettings()
@@ -237,6 +242,63 @@ public final class RepositoryListViewModel: ObservableObject {
         }
         environment.settingsRepository.saveSettings(currentSettings)
         applyMonitoringFilters()
+    }
+
+    // MARK: - Repository Create/Delete
+
+    /// GitHub에 새 저장소를 생성하고 목록에 즉시 반영합니다.
+    @discardableResult
+    public func createRepository(name: String, description: String, isPrivate: Bool) async -> Bool {
+        let token = currentSettings.githubToken
+        guard !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            self.errorMessage = "GitHub Personal Access Token이 등록되지 않았습니다."
+            return false
+        }
+
+        isMutatingRepository = true
+        errorMessage = nil
+
+        do {
+            let repo = try await environment.manageRepositoryUseCase.createRepository(
+                token: token,
+                name: name,
+                description: description.isEmpty ? nil : description,
+                isPrivate: isPrivate,
+                settings: currentSettings
+            )
+            self.allFetchedRepositories.insert(repo, at: 0)
+            loadSettings()
+            applyMonitoringFilters()
+            self.selectedRepositoryId = repo.id
+            self.isCreateRepoSheetPresented = false
+            isMutatingRepository = false
+            return true
+        } catch {
+            self.errorMessage = "저장소 생성 실패: \(error.localizedDescription)"
+            isMutatingRepository = false
+            return false
+        }
+    }
+
+    /// GitHub에서 저장소를 영구 삭제하고 목록에서 제거합니다.
+    @discardableResult
+    public func confirmDeleteRepository(_ repo: RepositoryItem) async -> Bool {
+        isMutatingRepository = true
+        errorMessage = nil
+
+        do {
+            try await environment.manageRepositoryUseCase.deleteRepository(repo, settings: currentSettings)
+            self.allFetchedRepositories.removeAll { $0.id == repo.id }
+            loadSettings()
+            applyMonitoringFilters()
+            self.repositoryPendingDeletion = nil
+            isMutatingRepository = false
+            return true
+        } catch {
+            self.errorMessage = "저장소 삭제 실패: \(error.localizedDescription)"
+            isMutatingRepository = false
+            return false
+        }
     }
 
     /// 메모 개수 변경 시 로컬 목록 갱신

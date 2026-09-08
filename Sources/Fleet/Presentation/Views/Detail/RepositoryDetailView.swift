@@ -341,6 +341,18 @@ public struct RepositoryDetailView: View {
                     .controlSize(.small)
                     .help("오른쪽 로컬 디렉토리 파일 탐색기 열기/닫기")
 
+                    // AI 에이전트별 지침(CLAUDE.md 등) 설정
+                    Button(action: {
+                        viewModel.openGuidelineSettings()
+                    }) {
+                        Image(systemName: "text.book.closed")
+                            .foregroundColor(.secondary)
+                            .frame(width: 15, height: 15)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("이 저장소의 AI 에이전트별 지침(CLAUDE.md 등) 설정")
+
                     // 터미널 토글 버튼
                     Button(action: {
                         terminalManager.togglePanel(for: repo.id, name: repo.name, localPath: viewModel.localDirectoryPath)

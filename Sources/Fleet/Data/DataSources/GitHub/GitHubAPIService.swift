@@ -146,6 +146,64 @@ public final class GitHubAPIService: Sendable {
         return (date: date, message: message)
     }
 
+    /// 새 GitHub 저장소 생성
+    public func createRepository(
+        token: String,
+        name: String,
+        description: String?,
+        isPrivate: Bool
+    ) async throws -> GitHubRepoDTO {
+        let url = baseURL.appendingPathComponent("user/repos")
+        var request = makeRequest(url: url, token: token)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = [
+            "name": name,
+            "private": isPrivate,
+            "auto_init": true
+        ]
+        if let description = description, !description.isEmpty {
+            body["description"] = description
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await session.data(for: request)
+
+        if let http = response as? HTTPURLResponse, http.statusCode == 422 {
+            let message = (try? JSONDecoder().decode(GitHubErrorDTO.self, from: data))?.message
+            throw GitHubAPIError.networkError(message ?? "저장소 생성에 실패했습니다. 이름이 이미 사용 중일 수 있습니다.")
+        }
+        try validateResponse(response)
+
+        do {
+            return try JSONDecoder().decode(GitHubRepoDTO.self, from: data)
+        } catch {
+            throw GitHubAPIError.decodingError(error.localizedDescription)
+        }
+    }
+
+    /// GitHub 저장소 영구 삭제
+    public func deleteRepository(token: String, owner: String, repo: String) async throws {
+        let url = baseURL.appendingPathComponent("repos/\(owner)/\(repo)")
+        var request = makeRequest(url: url, token: token)
+        request.httpMethod = "DELETE"
+
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { return }
+
+        switch http.statusCode {
+        case 204, 200...299:
+            return
+        case 403:
+            throw GitHubAPIError.networkError("삭제 권한이 없습니다. GitHub Personal Access Token에 'delete_repo' 스코프를 추가해 주세요.")
+        case 404:
+            throw GitHubAPIError.networkError("저장소를 찾을 수 없습니다.")
+        default:
+            try validateResponse(response)
+        }
+    }
+
     private func makeRequest(url: URL, token: String) -> URLRequest {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"

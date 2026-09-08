@@ -4,5 +4,6 @@ import Foundation
 public protocol LocalPathRepositoryProtocol: Sendable {
     func getLocalPath(for repositoryId: Int) -> String?
     func setLocalPath(_ path: String, for repositoryId: Int)
+    func removeLocalPath(for repositoryId: Int)
     func detectLocalPath(for repoName: String, baseDirectories: [String]) -> String?
 }
