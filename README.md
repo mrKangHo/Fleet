@@ -1,12 +1,11 @@
+🇰🇷 [한국어](README.md) | 🇺🇸 [English](README.en.md) | 🇯🇵 [日本語](README.ja.md) | 🇨🇳 [中文](README.zh.md)
+
 <p align="center">
   <img src="docs/icon.png" width="120" alt="Fleet 앱 아이콘" />
 </p>
 
 <h1 align="center">Fleet (macOS)</h1>
 
-<p align="center">
-  <b>🇰🇷 한국어</b> | <a href="README.en.md">🇺🇸 English</a> | <a href="README.ja.md">🇯🇵 日本語</a> | <a href="README.zh.md">🇨🇳 中文</a>
-</p>
 
 > **내 GitHub 저장소들을 마지막 커밋일 기준으로 관리하고, 할 일을 메모해두었다가, 내가 쓰는 AI 에이전트에게 바로 맡기는 macOS 네이티브 앱**
 
@@ -120,6 +119,10 @@ Sources/Fleet/
 이 저장소를 그대로 Homebrew 탭(tap)으로 사용합니다 — 별도의 `homebrew-*` 저장소 없이 바로 설치할 수 있습니다.
 
 ```bash
+brew tap mrKangHo/tap
+brew install fleet
+
+# 또는 전용 tap
 brew tap mrKangHo/fleet https://github.com/mrKangHo/Fleet.git
 brew install --cask fleet
 ```

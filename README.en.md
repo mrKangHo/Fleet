@@ -1,12 +1,11 @@
+🇰🇷 [한국어](README.md) | 🇺🇸 [English](README.en.md) | 🇯🇵 [日本語](README.ja.md) | 🇨🇳 [中文](README.zh.md)
+
 <p align="center">
   <img src="docs/icon.png" width="120" alt="Fleet app icon" />
 </p>
 
 <h1 align="center">Fleet (macOS)</h1>
 
-<p align="center">
-  <a href="README.md">🇰🇷 한국어</a> | <b>🇺🇸 English</b> | <a href="README.ja.md">🇯🇵 日本語</a> | <a href="README.zh.md">🇨🇳 中文</a>
-</p>
 
 > **A native macOS app that manages your GitHub repositories by last commit date, keeps memos of what to do next, and hands that work straight to the AI agent you already use**
 
@@ -120,6 +119,10 @@ Sources/Fleet/
 This repository doubles as its own Homebrew tap — no separate `homebrew-*` repo needed.
 
 ```bash
+brew tap mrKangHo/tap
+brew install fleet
+
+# 또는 전용 tap
 brew tap mrKangHo/fleet https://github.com/mrKangHo/Fleet.git
 brew install --cask fleet
 ```

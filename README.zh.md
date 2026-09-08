@@ -1,12 +1,11 @@
+🇰🇷 [한국어](README.md) | 🇺🇸 [English](README.en.md) | 🇯🇵 [日本語](README.ja.md) | 🇨🇳 [中文](README.zh.md)
+
 <p align="center">
   <img src="docs/icon.png" width="120" alt="Fleet 应用图标" />
 </p>
 
 <h1 align="center">Fleet (macOS)</h1>
 
-<p align="center">
-  <a href="README.md">🇰🇷 한국어</a> | <a href="README.en.md">🇺🇸 English</a> | <a href="README.ja.md">🇯🇵 日本語</a> | <b>🇨🇳 中文</b>
-</p>
 
 > **一款按最后提交日期管理你的 GitHub 仓库、记录接下来要做的事、并直接交给你正在使用的 AI 智能体去完成的原生 macOS 应用**
 
@@ -120,6 +119,10 @@ Sources/Fleet/
 本仓库本身即作为 Homebrew tap 使用——无需另建独立的 `homebrew-*` 仓库。
 
 ```bash
+brew tap mrKangHo/tap
+brew install fleet
+
+# 또는 전용 tap
 brew tap mrKangHo/fleet https://github.com/mrKangHo/Fleet.git
 brew install --cask fleet
 ```
