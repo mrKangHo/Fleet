@@ -11,13 +11,19 @@ public struct RepositoryGuidelineSettingsView: View {
 
     public var body: some View {
         HStack(spacing: 0) {
-            // 좌측: AI 에이전트 프리셋 목록
+            // 좌측: 공통 지침 + AI 에이전트 프리셋 목록
             VStack(alignment: .leading, spacing: 0) {
-                Text("AI 에이전트")
+                commonGuidelineRow
+                    .padding(.horizontal, 8)
+                    .padding(.top, 12)
+
+                Divider()
+                    .padding(.vertical, 8)
+
+                Text("AI 에이전트별 지침")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 12)
-                    .padding(.top, 12)
                     .padding(.bottom, 6)
 
                 ScrollView {
@@ -34,24 +40,30 @@ public struct RepositoryGuidelineSettingsView: View {
 
             Divider()
 
-            // 우측: 선택된 프리셋의 지침 편집 영역
+            // 우측: 선택된 항목의 지침 편집 영역
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Image(systemName: viewModel.guidelineSelectedPreset.iconName)
+                    Image(systemName: headerIconName)
                         .foregroundColor(.accentColor)
-                    Text("\(viewModel.guidelineSelectedPreset.shortName) 지침")
+                    Text(headerTitle)
                         .font(.system(.title3, design: .rounded))
                         .fontWeight(.bold)
                     Spacer()
                     Button("닫기") { dismiss() }
                 }
 
-                if let path = viewModel.guidelineFilePath(for: viewModel.guidelineSelectedPreset) {
+                if let path = headerFilePath {
                     Text(path)
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                }
+
+                if viewModel.isCommonGuidelineSelected {
+                    Text("여기에 작성한 내용은 저장 시 CLAUDE.md, AGENTS.md 등 모든 AI 지침 파일 상단에 자동으로 반영됩니다.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
 
                 if let error = viewModel.errorMessage {
@@ -60,7 +72,7 @@ public struct RepositoryGuidelineSettingsView: View {
                         .foregroundColor(.red)
                 }
 
-                TextEditor(text: $viewModel.guidelineContent)
+                TextEditor(text: viewModel.isCommonGuidelineSelected ? $viewModel.commonGuidelineContent : $viewModel.guidelineContent)
                     .font(.system(size: 13, design: .monospaced))
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
@@ -83,9 +95,53 @@ public struct RepositoryGuidelineSettingsView: View {
         .frame(width: 700, height: 480)
     }
 
+    private var headerIconName: String {
+        viewModel.isCommonGuidelineSelected ? "person.3.fill" : viewModel.guidelineSelectedPreset.iconName
+    }
+
+    private var headerTitle: String {
+        viewModel.isCommonGuidelineSelected ? "공통 지침" : "\(viewModel.guidelineSelectedPreset.shortName) 지침"
+    }
+
+    private var headerFilePath: String? {
+        viewModel.isCommonGuidelineSelected ? viewModel.commonGuidelineFilePath : viewModel.guidelineFilePath(for: viewModel.guidelineSelectedPreset)
+    }
+
+    @ViewBuilder
+    private var commonGuidelineRow: some View {
+        let isSelected = viewModel.isCommonGuidelineSelected
+        Button {
+            viewModel.selectCommonGuideline()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "person.3.fill")
+                    .frame(width: 16)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("공통 지침")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("모든 AI에 공유")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if viewModel.commonGuidelineExists {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(AppTheme.activeGreen)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(isSelected ? Color.accentColor.opacity(0.14) : Color.clear)
+            .foregroundColor(isSelected ? .accentColor : .primary)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+    }
+
     @ViewBuilder
     private func presetRow(_ preset: AppSettings.AIAgentPreset) -> some View {
-        let isSelected = viewModel.guidelineSelectedPreset == preset
+        let isSelected = !viewModel.isCommonGuidelineSelected && viewModel.guidelineSelectedPreset == preset
         Button {
             viewModel.selectGuidelinePreset(preset)
         } label: {
