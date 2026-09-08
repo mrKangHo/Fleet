@@ -1,12 +1,11 @@
+🇰🇷 [한국어](README.md) | 🇺🇸 [English](README.en.md) | 🇯🇵 [日本語](README.ja.md) | 🇨🇳 [中文](README.zh.md)
+
 <p align="center">
   <img src="docs/icon.png" width="120" alt="Fleetアプリアイコン" />
 </p>
 
 <h1 align="center">Fleet (macOS)</h1>
 
-<p align="center">
-  <a href="README.md">🇰🇷 한국어</a> | <a href="README.en.md">🇺🇸 English</a> | <b>🇯🇵 日本語</b> | <a href="README.zh.md">🇨🇳 中文</a>
-</p>
 
 > **GitHubリポジトリを最終コミット日で管理し、次にやることをメモしておき、そのままいつも使っているAIエージェントに任せられるmacOSネイティブアプリ**
 
@@ -120,6 +119,10 @@ Sources/Fleet/
 このリポジトリ自体をHomebrewのタップ（tap）として使用します — 別途`homebrew-*`リポジトリを作る必要はありません。
 
 ```bash
+brew tap mrKangHo/tap
+brew install fleet
+
+# 또는 전용 tap
 brew tap mrKangHo/fleet https://github.com/mrKangHo/Fleet.git
 brew install --cask fleet
 ```
