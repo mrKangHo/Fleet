@@ -45,6 +45,11 @@ public struct GitHubRepoDTO: Codable, Sendable {
     }
 }
 
+// MARK: - GitHub Error DTO
+public struct GitHubErrorDTO: Codable, Sendable {
+    public let message: String
+}
+
 // MARK: - GitHub Commit DTO
 public struct GitHubCommitResponseDTO: Codable, Sendable {
     public let sha: String

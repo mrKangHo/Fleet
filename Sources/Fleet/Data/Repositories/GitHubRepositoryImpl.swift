@@ -18,31 +18,41 @@ public final class GitHubRepositoryImpl: GitHubRepositoryProtocol, Sendable {
 
     public func fetchRepositories(token: String) async throws -> [RepositoryItem] {
         let repoDTOs = try await apiService.fetchUserRepositories(token: token)
+        return repoDTOs.map { mapToRepositoryItem($0) }
+    }
 
-        return repoDTOs.map { dto in
-            let date = parseDate(dto.pushedAt) ?? parseDate(dto.updatedAt)
-            return RepositoryItem(
-                id: dto.id,
-                name: dto.name,
-                fullName: dto.fullName,
-                owner: dto.owner.login,
-                ownerAvatarUrl: dto.owner.avatarUrl,
-                isPrivate: dto.private,
-                isFork: dto.fork,
-                isArchived: dto.archived ?? false,
-                htmlUrl: URL(string: dto.htmlUrl) ?? URL(string: "https://github.com/\(dto.fullName)")!,
-                description: dto.description,
-                defaultBranch: dto.defaultBranch ?? "main",
-                language: dto.language,
-                stargazersCount: dto.stargazersCount ?? 0,
-                forksCount: dto.forksCount ?? 0,
-                openIssuesCount: dto.openIssuesCount ?? 0,
-                pushedAt: date,
-                lastCommitDate: date,
-                lastCommitMessage: nil,
-                memoCount: 0
-            )
-        }
+    public func createRepository(token: String, name: String, description: String?, isPrivate: Bool) async throws -> RepositoryItem {
+        let dto = try await apiService.createRepository(token: token, name: name, description: description, isPrivate: isPrivate)
+        return mapToRepositoryItem(dto)
+    }
+
+    public func deleteRepository(token: String, owner: String, repo: String) async throws {
+        try await apiService.deleteRepository(token: token, owner: owner, repo: repo)
+    }
+
+    private func mapToRepositoryItem(_ dto: GitHubRepoDTO) -> RepositoryItem {
+        let date = parseDate(dto.pushedAt) ?? parseDate(dto.updatedAt)
+        return RepositoryItem(
+            id: dto.id,
+            name: dto.name,
+            fullName: dto.fullName,
+            owner: dto.owner.login,
+            ownerAvatarUrl: dto.owner.avatarUrl,
+            isPrivate: dto.private,
+            isFork: dto.fork,
+            isArchived: dto.archived ?? false,
+            htmlUrl: URL(string: dto.htmlUrl) ?? URL(string: "https://github.com/\(dto.fullName)")!,
+            description: dto.description,
+            defaultBranch: dto.defaultBranch ?? "main",
+            language: dto.language,
+            stargazersCount: dto.stargazersCount ?? 0,
+            forksCount: dto.forksCount ?? 0,
+            openIssuesCount: dto.openIssuesCount ?? 0,
+            pushedAt: date,
+            lastCommitDate: date,
+            lastCommitMessage: nil,
+            memoCount: 0
+        )
     }
 
     public func fetchLatestCommit(

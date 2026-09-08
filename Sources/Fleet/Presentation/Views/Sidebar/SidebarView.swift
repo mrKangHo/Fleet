@@ -361,10 +361,19 @@ public struct SidebarView: View {
 
                 Spacer()
 
-                // + Add Repo (저장소 목록 추가/수정) 버튼
-                Button(action: {
-                    viewModel.isSelectionSheetPresented = true
-                }) {
+                // + Add Repo (저장소 목록 추가/수정/생성) 메뉴
+                Menu {
+                    Button(action: {
+                        viewModel.isSelectionSheetPresented = true
+                    }) {
+                        Label("관리 목록 수정...", systemImage: "checklist")
+                    }
+                    Button(action: {
+                        viewModel.isCreateRepoSheetPresented = true
+                    }) {
+                        Label("새 저장소 생성...", systemImage: "plus.app")
+                    }
+                } label: {
                     HStack(spacing: 3) {
                         Image(systemName: "plus")
                             .font(.system(size: 10, weight: .bold))
@@ -377,8 +386,9 @@ public struct SidebarView: View {
                     .foregroundColor(.accentColor)
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
-                .buttonStyle(.plain)
-                .help("관리할 저장소 추가 및 편집")
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("관리할 저장소 추가, 편집 및 생성")
 
                 if viewModel.isLoading {
                     ProgressView()
@@ -447,6 +457,12 @@ public struct SidebarView: View {
                     viewModel.isSelectionSheetPresented = true
                 }) {
                     Label("관리 저장소 목록 전체 편집...", systemImage: "checklist")
+                }
+                Divider()
+                Button(role: .destructive, action: {
+                    viewModel.repositoryPendingDeletion = repo
+                }) {
+                    Label("GitHub에서 저장소 삭제...", systemImage: "trash")
                 }
             }
     }
