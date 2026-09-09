@@ -74,9 +74,22 @@ public final class VoiceAssistantViewModel: ObservableObject {
         }
 
         state = .thinking
-        let intent = environment.manageVoiceCommandUseCase.parseIntent(from: text)
-        let response = buildResponse(for: intent)
-        respond(with: response)
+        Task {
+            let intent = await resolveIntent(from: text)
+            let response = self.buildResponse(for: intent)
+            self.respond(with: response)
+        }
+    }
+
+    private func resolveIntent(from text: String) async -> VoiceIntent {
+        let settings = environment.settingsRepository.loadSettings()
+        if settings.naturalLanguageVoiceCommands, environment.voiceIntentClassifierService.isAvailable {
+            let repoNames = listViewModel.repositories.map { $0.name }
+            if let classified = await environment.voiceIntentClassifierService.classify(text: text, repositoryNames: repoNames) {
+                return classified
+            }
+        }
+        return environment.manageVoiceCommandUseCase.parseIntent(from: text)
     }
 
     private func buildResponse(for intent: VoiceIntent) -> String {

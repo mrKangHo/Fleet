@@ -19,6 +19,7 @@ public final class AppEnvironment: Sendable {
     public let speechRecognitionService: SpeechRecognitionServiceProtocol
     public let appleSpeechSynthesisService: SpeechSynthesisServiceProtocol
     public let meloSpeechSynthesisService: SpeechSynthesisServiceProtocol
+    public let voiceIntentClassifierService: VoiceIntentClassifierServiceProtocol
 
     // MARK: - Use Cases
     public let fetchRepositoriesUseCase: FetchRepositoriesUseCase
@@ -43,7 +44,8 @@ public final class AppEnvironment: Sendable {
         terminalSessionManager: TerminalSessionManager = .shared,
         speechRecognitionService: SpeechRecognitionServiceProtocol = SpeechRecognitionService(),
         appleSpeechSynthesisService: SpeechSynthesisServiceProtocol = SpeechSynthesisService(),
-        meloSpeechSynthesisService: SpeechSynthesisServiceProtocol = MeloTTSSpeechSynthesisService()
+        meloSpeechSynthesisService: SpeechSynthesisServiceProtocol = MeloTTSSpeechSynthesisService(),
+        voiceIntentClassifierService: VoiceIntentClassifierServiceProtocol = ClaudeVoiceIntentClassifierService()
     ) {
         self.githubRepository = githubRepository
         self.memoRepository = memoRepository
@@ -57,6 +59,7 @@ public final class AppEnvironment: Sendable {
         self.speechRecognitionService = speechRecognitionService
         self.appleSpeechSynthesisService = appleSpeechSynthesisService
         self.meloSpeechSynthesisService = meloSpeechSynthesisService
+        self.voiceIntentClassifierService = voiceIntentClassifierService
 
         let initialSettings = settingsRepository.loadSettings()
         terminalSessionManager.currentProfile = initialSettings.terminalApp

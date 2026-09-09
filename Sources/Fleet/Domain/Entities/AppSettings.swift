@@ -268,6 +268,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var voiceIdentifier: String?
     /// 말하기 속도 (0.0 가장 느림 ~ 1.0 가장 빠름, 기본값 0.5)
     public var voiceSpeechRate: Float
+    /// AI CLI로 자유로운 표현의 음성 명령을 이해할지 여부 (꺼두면 고정 키워드 매칭만 사용)
+    public var naturalLanguageVoiceCommands: Bool
 
     // MARK: - Monitored Repositories
     public var monitoredRepoIds: Set<Int>?
@@ -314,7 +316,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
         hasCompletedInitialSelection: Bool = false,
         ttsEngine: TTSEngine = .apple,
         voiceIdentifier: String? = nil,
-        voiceSpeechRate: Float = 0.5
+        voiceSpeechRate: Float = 0.5,
+        naturalLanguageVoiceCommands: Bool = true
     ) {
         self.githubToken = githubToken
         self.staleThresholdDays = staleThresholdDays
@@ -340,6 +343,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.ttsEngine = ttsEngine
         self.voiceIdentifier = voiceIdentifier
         self.voiceSpeechRate = voiceSpeechRate
+        self.naturalLanguageVoiceCommands = naturalLanguageVoiceCommands
     }
 
     // MARK: - Decodable Backward Compatibility
@@ -374,6 +378,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.ttsEngine = try container.decodeIfPresent(TTSEngine.self, forKey: .ttsEngine) ?? .apple
         self.voiceIdentifier = try container.decodeIfPresent(String.self, forKey: .voiceIdentifier)
         self.voiceSpeechRate = try container.decodeIfPresent(Float.self, forKey: .voiceSpeechRate) ?? 0.5
+        self.naturalLanguageVoiceCommands = try container.decodeIfPresent(Bool.self, forKey: .naturalLanguageVoiceCommands) ?? true
     }
 
     public static let `default` = AppSettings()

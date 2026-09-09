@@ -464,6 +464,32 @@ public struct SettingsView: View {
             .glassCard(cornerRadius: 12)
 
             VStack(alignment: .leading, spacing: 14) {
+                Text("명령 인식 (Recognition)")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.secondary)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Toggle(isOn: $viewModel.settings.naturalLanguageVoiceCommands) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("자연어 명령 인식 (AI 사용)")
+                                .font(.system(.subheadline, design: .rounded))
+                                .fontWeight(.semibold)
+                            Text("정해진 문구가 아니어도 자유롭게 말한 내용을 Claude CLI로 이해합니다. 클로드 CLI가 설치되어 있어야 하며, 응답이 1~3초 정도 더 걸릴 수 있습니다. 꺼두면 고정 키워드(\"브리핑\", \"상태\" 등)만 인식합니다.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .toggleStyle(.switch)
+
+                    if viewModel.settings.naturalLanguageVoiceCommands && !AIAgentDiscovery.isInstalled(binaryName: "claude") {
+                        Text("Claude CLI가 감지되지 않아 지금은 고정 키워드 인식으로 동작합니다.")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.staleRose)
+                    }
+                }
+                .padding(14)
+                .glassCard(cornerRadius: 12)
+
                 Text("음성 엔진 (Engine)")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.secondary)
