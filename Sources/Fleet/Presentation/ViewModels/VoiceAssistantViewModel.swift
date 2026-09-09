@@ -76,7 +76,7 @@ public final class VoiceAssistantViewModel: ObservableObject {
         state = .thinking
         Task {
             let intent = await resolveIntent(from: text)
-            let response = self.buildResponse(for: intent)
+            let response = await self.buildResponse(for: intent)
             self.respond(with: response)
         }
     }
@@ -92,7 +92,7 @@ public final class VoiceAssistantViewModel: ObservableObject {
         return environment.manageVoiceCommandUseCase.parseIntent(from: text)
     }
 
-    private func buildResponse(for intent: VoiceIntent) -> String {
+    private func buildResponse(for intent: VoiceIntent) async -> String {
         let useCase = environment.manageVoiceCommandUseCase
 
         switch intent {
@@ -122,15 +122,12 @@ public final class VoiceAssistantViewModel: ObservableObject {
                 guard let repo = findRepository(named: name) else {
                     return useCase.buildRepositoryNotFound(name: name)
                 }
-                guard repo.id == detailViewModel.repository?.id else {
-                    return "\(repo.name)를 먼저 열어 주시면 메모 현황을 알려드릴게요."
-                }
-                return useCase.buildMemoSummary(memos: detailViewModel.memos)
+                let memos = (try? await environment.manageMemoUseCase.getMemos(for: repo.id)) ?? []
+                return useCase.buildMemoSummary(memos: memos)
             }
-            guard detailViewModel.repository != nil else {
-                return "먼저 저장소를 선택해 주세요."
-            }
-            return useCase.buildMemoSummary(memos: detailViewModel.memos)
+            // 특정 저장소를 지정하지 않았으면 관리 중인 모든 저장소에 걸쳐 합산해서 알려준다
+            // (사이드바에서 지금 어떤 저장소가 열려 있는지는 음성으로 물을 때 중요하지 않다).
+            return await buildAllRepositoriesMemoSummary(useCase: useCase)
 
         case .help:
             return useCase.helpText()
@@ -141,6 +138,16 @@ public final class VoiceAssistantViewModel: ObservableObject {
         case .unrecognized:
             return "죄송해요, 이해하지 못했습니다. " + useCase.helpText()
         }
+    }
+
+    private func buildAllRepositoriesMemoSummary(useCase: ManageVoiceCommandUseCase) async -> String {
+        let allMemos = (try? await environment.manageMemoUseCase.getAllMemos()) ?? []
+        let repoNameById = Dictionary(uniqueKeysWithValues: listViewModel.allFetchedRepositories.map { ($0.id, $0.name) })
+        let grouped = Dictionary(grouping: allMemos, by: { $0.repositoryId })
+        let memosByRepository = grouped.map { repositoryId, memos in
+            (repositoryName: repoNameById[repositoryId] ?? "알 수 없는 저장소", memos: memos)
+        }
+        return useCase.buildAllMemoSummary(memosByRepository: memosByRepository)
     }
 
     private func resolveRepository(named name: String?) -> RepositoryItem? {

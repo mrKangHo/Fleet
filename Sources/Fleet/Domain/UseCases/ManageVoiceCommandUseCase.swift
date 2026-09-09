@@ -91,6 +91,28 @@ public struct ManageVoiceCommandUseCase: Sendable {
         "\(name) 저장소를 찾지 못했습니다."
     }
 
+    /// 저장소 이름을 특정하지 않았을 때, 관리 중인 모든 저장소에 걸친 메모 현황을 요약합니다.
+    public func buildAllMemoSummary(memosByRepository: [(repositoryName: String, memos: [MemoItem])]) -> String {
+        let allMemos = memosByRepository.flatMap { $0.memos }
+        guard !allMemos.isEmpty else { return "등록된 메모가 없습니다." }
+
+        let pending = allMemos.filter { $0.status == .pending }.count
+        let inProgress = allMemos.filter { $0.status == .inProgress }.count
+        let completed = allMemos.filter { $0.status == .completed }.count
+
+        let perRepo = memosByRepository
+            .filter { !$0.memos.isEmpty }
+            .sorted { $0.memos.count > $1.memos.count }
+            .map { "\($0.repositoryName) \($0.memos.count)개" }
+            .joined(separator: ", ")
+
+        var text = "전체 저장소에 메모가 총 \(allMemos.count)개 있습니다. 대기 \(pending)개, 작업 중 \(inProgress)개, 완료 \(completed)개입니다."
+        if !perRepo.isEmpty {
+            text += " (\(perRepo))"
+        }
+        return text
+    }
+
     public func helpText() -> String {
         "브리핑해줘, 저장소 이름 열어줘, 상태 알려줘, 메모 현황 알려줘 라고 말씀해 보세요."
     }

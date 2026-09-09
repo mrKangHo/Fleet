@@ -14,6 +14,12 @@ public struct ManageMemoUseCase: Sendable {
         return memos.sorted { $0.createdAt > $1.createdAt }
     }
 
+    /// 모든 저장소에 걸친 전체 메모 조회 (생성일 역순)
+    public func getAllMemos() async throws -> [MemoItem] {
+        let memos = try await memoRepository.getAllMemos()
+        return memos.sorted { $0.createdAt > $1.createdAt }
+    }
+
     /// 신규 메모 추가
     @discardableResult
     public func addMemo(
