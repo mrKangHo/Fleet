@@ -25,6 +25,8 @@ targets:
     deploymentTarget: "14.0"
     sources:
       - path: Sources/Fleet
+      - path: StitchDesigns/AppIcon.icns
+        buildPhase: resources
     dependencies:
       - package: SwiftTerm
     settings:
