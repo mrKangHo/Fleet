@@ -11,20 +11,34 @@ public final class SpeechSynthesisService: NSObject, SpeechSynthesisServiceProto
         synthesizer.delegate = self
     }
 
-    public func speak(_ text: String, onFinish: @escaping () -> Void) {
+    public func speak(_ text: String, voiceIdentifier: String?, rate: Float, onFinish: @escaping () -> Void) {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             onFinish()
             return
         }
         onFinishHandler = onFinish
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = Self.preferredKoreanVoice()
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        if let voiceIdentifier = voiceIdentifier, let voice = AVSpeechSynthesisVoice(identifier: voiceIdentifier) {
+            utterance.voice = voice
+        } else {
+            utterance.voice = Self.preferredKoreanVoice()
+        }
+        utterance.rate = rate
         synthesizer.speak(utterance)
     }
 
     public func stopSpeaking() {
         synthesizer.stopSpeaking(at: .immediate)
+    }
+
+    public func availableVoices() -> [SpeechVoiceOption] {
+        AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language == "ko-KR" }
+            .map { SpeechVoiceOption(id: $0.identifier, name: $0.name, isEnhanced: $0.quality == .enhanced || $0.quality == .premium) }
+            .sorted { lhs, rhs in
+                if lhs.isEnhanced != rhs.isEnhanced { return lhs.isEnhanced }
+                return lhs.name < rhs.name
+            }
     }
 
     private static func preferredKoreanVoice() -> AVSpeechSynthesisVoice? {
@@ -36,12 +50,14 @@ public final class SpeechSynthesisService: NSObject, SpeechSynthesisServiceProto
 
 extension SpeechSynthesisService: AVSpeechSynthesizerDelegate {
     public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        onFinishHandler?()
+        let handler = onFinishHandler
         onFinishHandler = nil
+        Task { @MainActor in handler?() }
     }
 
     public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        onFinishHandler?()
+        let handler = onFinishHandler
         onFinishHandler = nil
+        Task { @MainActor in handler?() }
     }
 }

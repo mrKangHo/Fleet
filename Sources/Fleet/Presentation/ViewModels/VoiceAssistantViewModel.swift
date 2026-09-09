@@ -142,7 +142,12 @@ public final class VoiceAssistantViewModel: ObservableObject {
     private func respond(with text: String) {
         responseText = text
         state = .speaking
-        environment.speechSynthesisService.speak(text) { [weak self] in
+        let settings = environment.settingsRepository.loadSettings()
+        environment.speechSynthesisService.speak(
+            text,
+            voiceIdentifier: settings.voiceIdentifier,
+            rate: settings.voiceSpeechRate
+        ) { [weak self] in
             Task { @MainActor in
                 guard let self = self, self.state == .speaking else { return }
                 self.state = .idle

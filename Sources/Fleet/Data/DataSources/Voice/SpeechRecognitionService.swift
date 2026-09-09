@@ -85,11 +85,11 @@ public final class SpeechRecognitionService: SpeechRecognitionServiceProtocol, @
 
             if let result = result {
                 let text = result.bestTranscription.formattedString
-                DispatchQueue.main.async { onPartialResult(text) }
+                Task { @MainActor in onPartialResult(text) }
 
                 if result.isFinal {
-                    DispatchQueue.main.async {
-                        self.silenceTimer?.invalidate()
+                    Task { @MainActor [weak self] in
+                        self?.silenceTimer?.invalidate()
                         onFinalResult(text)
                     }
                     self.stopListening()
@@ -99,14 +99,14 @@ public final class SpeechRecognitionService: SpeechRecognitionServiceProtocol, @
             }
 
             if let error = error {
-                DispatchQueue.main.async { onError(error) }
+                Task { @MainActor in onError(error) }
                 self.stopListening()
             }
         }
     }
 
     private func resetSilenceTimer(finalText: String, onFinalResult: @escaping (String) -> Void) {
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self = self else { return }
             self.silenceTimer?.invalidate()
             self.silenceTimer = Timer.scheduledTimer(withTimeInterval: self.silenceInterval, repeats: false) { [weak self] _ in

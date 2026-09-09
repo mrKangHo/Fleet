@@ -254,6 +254,12 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var streamInEmbeddedTerminal: Bool
     public var weeklyReportEnabled: Bool
 
+    // MARK: - Voice Assistant
+    /// 선택된 음성 합성 보이스 식별자. nil이면 자동으로 최적의 한국어 보이스를 선택합니다.
+    public var voiceIdentifier: String?
+    /// 말하기 속도 (0.0 가장 느림 ~ 1.0 가장 빠름, 기본값 0.5)
+    public var voiceSpeechRate: Float
+
     // MARK: - Monitored Repositories
     public var monitoredRepoIds: Set<Int>?
     public var ignoredRepoIds: Set<Int>
@@ -296,7 +302,9 @@ public struct AppSettings: Codable, Hashable, Sendable {
 """,
         monitoredRepoIds: Set<Int>? = nil,
         ignoredRepoIds: Set<Int> = [],
-        hasCompletedInitialSelection: Bool = false
+        hasCompletedInitialSelection: Bool = false,
+        voiceIdentifier: String? = nil,
+        voiceSpeechRate: Float = 0.5
     ) {
         self.githubToken = githubToken
         self.staleThresholdDays = staleThresholdDays
@@ -319,6 +327,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.monitoredRepoIds = monitoredRepoIds
         self.ignoredRepoIds = ignoredRepoIds
         self.hasCompletedInitialSelection = hasCompletedInitialSelection
+        self.voiceIdentifier = voiceIdentifier
+        self.voiceSpeechRate = voiceSpeechRate
     }
 
     // MARK: - Decodable Backward Compatibility
@@ -350,6 +360,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.monitoredRepoIds = try container.decodeIfPresent(Set<Int>.self, forKey: .monitoredRepoIds)
         self.ignoredRepoIds = try container.decodeIfPresent(Set<Int>.self, forKey: .ignoredRepoIds) ?? []
         self.hasCompletedInitialSelection = try container.decodeIfPresent(Bool.self, forKey: .hasCompletedInitialSelection) ?? false
+        self.voiceIdentifier = try container.decodeIfPresent(String.self, forKey: .voiceIdentifier)
+        self.voiceSpeechRate = try container.decodeIfPresent(Float.self, forKey: .voiceSpeechRate) ?? 0.5
     }
 
     public static let `default` = AppSettings()

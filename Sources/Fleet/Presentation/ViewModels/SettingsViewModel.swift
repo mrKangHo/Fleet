@@ -77,6 +77,18 @@ public final class SettingsViewModel: ObservableObject {
         }
     }
 
+    public var availableKoreanVoices: [SpeechVoiceOption] {
+        environment.speechSynthesisService.availableVoices()
+    }
+
+    public func previewVoice() {
+        environment.speechSynthesisService.speak(
+            "안녕하세요, 자비스입니다. 이렇게 안내해 드릴게요.",
+            voiceIdentifier: settings.voiceIdentifier,
+            rate: settings.voiceSpeechRate
+        ) { }
+    }
+
     public func rescanCLI() {
         AIAgentDiscovery.invalidateCache()
         objectWillChange.send()

@@ -10,6 +10,7 @@ public struct SettingsView: View {
     public enum SettingsTab: String, CaseIterable, Identifiable {
         case general = "일반"
         case ai = "AI 에이전트 CLI"
+        case voice = "음성 어시스턴트"
         case stalePolicy = "D-Day 방치 알림"
         case terminalGit = "터미널 & Git"
         case shortcuts = "단축키"
@@ -21,6 +22,7 @@ public struct SettingsView: View {
             switch self {
             case .general: return "gearshape"
             case .ai: return "cpu"
+            case .voice: return "mic"
             case .stalePolicy: return "calendar.badge.clock"
             case .terminalGit: return "terminal"
             case .shortcuts: return "command"
@@ -112,6 +114,8 @@ public struct SettingsView: View {
                         generalTabContent
                     case .ai:
                         aiTabContent
+                    case .voice:
+                        voiceTabContent
                     case .stalePolicy:
                         stalePolicyTabContent
                     case .terminalGit:
@@ -437,6 +441,87 @@ public struct SettingsView: View {
                 .padding(14)
                 .glassCard(cornerRadius: 12)
             }
+        }
+    }
+
+    // MARK: - 음성 어시스턴트 탭
+    private var voiceTabContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "mic.fill")
+                        .foregroundColor(.accentColor)
+                    Text("Jarvis 음성 어시스턴트")
+                        .font(.system(.subheadline, design: .rounded))
+                        .fontWeight(.bold)
+                }
+                Text("메인 화면 상단의 마이크 버튼(⌘⇧J)으로 음성 명령을 사용할 때 적용되는 목소리와 말하기 속도를 설정합니다.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineSpacing(2)
+            }
+            .padding(14)
+            .glassCard(cornerRadius: 12)
+
+            VStack(alignment: .leading, spacing: 14) {
+                Text("보이스 (Voice)")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.secondary)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Picker("", selection: Binding(
+                        get: { viewModel.settings.voiceIdentifier ?? "" },
+                        set: { viewModel.settings.voiceIdentifier = $0.isEmpty ? nil : $0 }
+                    )) {
+                        Text("자동 선택 (Enhanced 우선)").tag("")
+                        ForEach(viewModel.availableKoreanVoices) { voice in
+                            Text(voice.isEnhanced ? "\(voice.name) (Enhanced)" : voice.name).tag(voice.id)
+                        }
+                    }
+                    .frame(width: 280)
+
+                    if viewModel.availableKoreanVoices.filter({ $0.isEnhanced }).isEmpty {
+                        Text("Enhanced 보이스가 설치되어 있지 않습니다. 시스템 설정 → 손쉬운 사용 → 낭독 콘텐츠에서 한국어 Enhanced 보이스를 내려받으면 더 자연스러운 목소리를 쓸 수 있어요.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("말하기 속도")
+                                .font(.system(.subheadline, design: .rounded))
+                                .fontWeight(.semibold)
+                            Spacer()
+                            Text(speedLabel(for: viewModel.settings.voiceSpeechRate))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $viewModel.settings.voiceSpeechRate, in: 0.3...0.65)
+                    }
+
+                    Button(action: { viewModel.previewVoice() }) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "play.fill")
+                            Text("미리 듣기")
+                        }
+                        .font(.system(size: 12, weight: .medium))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .padding(14)
+                .glassCard(cornerRadius: 12)
+            }
+        }
+    }
+
+    private func speedLabel(for rate: Float) -> String {
+        switch rate {
+        case ..<0.4: return "느리게"
+        case 0.4..<0.55: return "보통"
+        default: return "빠르게"
         }
     }
 
