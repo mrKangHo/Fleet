@@ -464,6 +464,32 @@ public struct SettingsView: View {
             .glassCard(cornerRadius: 12)
 
             VStack(alignment: .leading, spacing: 14) {
+                Text("음성 엔진 (Engine)")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.secondary)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Picker("", selection: $viewModel.settings.ttsEngine) {
+                        ForEach(AppSettings.TTSEngine.allCases) { engine in
+                            Text(engine.rawValue).tag(engine)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 280)
+
+                    if viewModel.settings.ttsEngine == .melo && !viewModel.isMeloTTSInstalled {
+                        Text("MeloTTS가 설치되어 있지 않아 Apple 음성으로 대체됩니다. ~/Library/Application Support/Fleet/MeloTTS 경로에 설치가 필요합니다.")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.staleRose)
+                    } else if viewModel.settings.ttsEngine == .melo {
+                        Text("완전 로컬·오프라인으로 동작합니다. 첫 응답은 서버가 켜지며 수 초 더 걸릴 수 있어요.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(14)
+                .glassCard(cornerRadius: 12)
+
                 Text("보이스 (Voice)")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.secondary)

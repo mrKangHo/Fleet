@@ -17,7 +17,8 @@ public final class AppEnvironment: Sendable {
     public let terminalExecutionService: TerminalExecutionServiceProtocol
     public let terminalSessionManager: TerminalSessionManager
     public let speechRecognitionService: SpeechRecognitionServiceProtocol
-    public let speechSynthesisService: SpeechSynthesisServiceProtocol
+    public let appleSpeechSynthesisService: SpeechSynthesisServiceProtocol
+    public let meloSpeechSynthesisService: SpeechSynthesisServiceProtocol
 
     // MARK: - Use Cases
     public let fetchRepositoriesUseCase: FetchRepositoriesUseCase
@@ -41,7 +42,8 @@ public final class AppEnvironment: Sendable {
         terminalExecutionService: TerminalExecutionServiceProtocol = TerminalExecutionService(),
         terminalSessionManager: TerminalSessionManager = .shared,
         speechRecognitionService: SpeechRecognitionServiceProtocol = SpeechRecognitionService(),
-        speechSynthesisService: SpeechSynthesisServiceProtocol = SpeechSynthesisService()
+        appleSpeechSynthesisService: SpeechSynthesisServiceProtocol = SpeechSynthesisService(),
+        meloSpeechSynthesisService: SpeechSynthesisServiceProtocol = MeloTTSSpeechSynthesisService()
     ) {
         self.githubRepository = githubRepository
         self.memoRepository = memoRepository
@@ -53,7 +55,8 @@ public final class AppEnvironment: Sendable {
         self.terminalExecutionService = terminalExecutionService
         self.terminalSessionManager = terminalSessionManager
         self.speechRecognitionService = speechRecognitionService
-        self.speechSynthesisService = speechSynthesisService
+        self.appleSpeechSynthesisService = appleSpeechSynthesisService
+        self.meloSpeechSynthesisService = meloSpeechSynthesisService
 
         let initialSettings = settingsRepository.loadSettings()
         terminalSessionManager.currentProfile = initialSettings.terminalApp
@@ -87,5 +90,13 @@ public final class AppEnvironment: Sendable {
             guidelineRepository: repositoryGuidelineRepository
         )
         self.manageVoiceCommandUseCase = ManageVoiceCommandUseCase()
+    }
+
+    /// 설정에 따라 활성화된 음성 합성 엔진을 반환합니다 (MeloTTS 미설치 시 Apple로 자동 대체).
+    public func speechSynthesisService(for settings: AppSettings) -> SpeechSynthesisServiceProtocol {
+        if settings.ttsEngine == .melo && MeloTTSSpeechSynthesisService.isInstalled {
+            return meloSpeechSynthesisService
+        }
+        return appleSpeechSynthesisService
     }
 }

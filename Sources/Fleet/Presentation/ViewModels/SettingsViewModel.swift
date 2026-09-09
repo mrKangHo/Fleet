@@ -77,12 +77,16 @@ public final class SettingsViewModel: ObservableObject {
         }
     }
 
+    public var isMeloTTSInstalled: Bool {
+        MeloTTSSpeechSynthesisService.isInstalled
+    }
+
     public var availableKoreanVoices: [SpeechVoiceOption] {
-        environment.speechSynthesisService.availableVoices()
+        environment.speechSynthesisService(for: settings).availableVoices()
     }
 
     public func previewVoice() {
-        environment.speechSynthesisService.speak(
+        environment.speechSynthesisService(for: settings).speak(
             "안녕하세요, 자비스입니다. 이렇게 안내해 드릴게요.",
             voiceIdentifier: settings.voiceIdentifier,
             rate: settings.voiceSpeechRate

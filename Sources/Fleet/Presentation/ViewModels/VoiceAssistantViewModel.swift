@@ -143,7 +143,7 @@ public final class VoiceAssistantViewModel: ObservableObject {
         responseText = text
         state = .speaking
         let settings = environment.settingsRepository.loadSettings()
-        environment.speechSynthesisService.speak(
+        environment.speechSynthesisService(for: settings).speak(
             text,
             voiceIdentifier: settings.voiceIdentifier,
             rate: settings.voiceSpeechRate
@@ -157,7 +157,8 @@ public final class VoiceAssistantViewModel: ObservableObject {
 
     public func dismissOverlay() {
         environment.speechRecognitionService.stopListening()
-        environment.speechSynthesisService.stopSpeaking()
+        let settings = environment.settingsRepository.loadSettings()
+        environment.speechSynthesisService(for: settings).stopSpeaking()
         state = .idle
         isOverlayPresented = false
     }
