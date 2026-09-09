@@ -9,11 +9,12 @@
 
 > **내 GitHub 저장소들을 마지막 커밋일 기준으로 관리하고, 할 일을 메모해두었다가, 내가 쓰는 AI 에이전트에게 바로 맡기는 macOS 네이티브 앱**
 
-Fleet가 하는 일은 딱 세 가지입니다.
+Fleet가 하는 일은 크게 네 가지입니다.
 
 1. **마지막 커밋일 기준 저장소 관리** — 내 GitHub 저장소들을 모두 가져와 마지막 커밋 이후 며칠이 지났는지(`D+XX`)를 추적하고, 오래 방치된 순으로 한눈에 보여줍니다.
 2. **할 일 메모** — 저장소별로 "다음에 뭘 고칠지/추가할지"를 메모(백로그)로 남겨둡니다.
 3. **AI로 바로 작업 수행** — 메모를 클릭하면 이미 쓰고 있는 AI 에이전트 CLI(Claude Code, Codex, Aider 등)가 터미널에서 그 저장소 컨텍스트로 바로 작업을 시작합니다.
+4. **음성으로 묻고 시키기** — 마이크 버튼(⌘⇧J) 한 번으로 방치 현황 브리핑, 저장소 열기, 메모 현황 조회를 말로 처리하고, 정해진 명령이 아니어도 자유롭게 말을 걸면 AI가 자연스럽게 대답합니다.
 
 <p align="center">
   <img src="docs/screenshot.png" width="900" alt="Fleet 앱 스크린샷" />
@@ -40,6 +41,14 @@ Fleet가 하는 일은 딱 세 가지입니다.
 - 로컬 저장소 폴더 자동 감지, 수동 폴더 연결도 가능
 - 작업이 시작되면 메모 상태가 `대기 중` → `작업 중 🚀`으로 실시간 전환되고 최근 실행 일시가 기록됨
 
+### 4. 음성 어시스턴트 (Voice Assistant)
+- **탭하여 말하기**: 메인 창 상단 마이크 버튼이나 단축키 **`⌘⇧J`**로 전체화면 오버레이를 띄우고 바로 말하기 시작, 침묵이 감지되면(~1.2초) 자동으로 듣기 종료
+- **음성 명령**: "브리핑해줘"(전체 방치 현황), "OO 저장소 열어줘", "상태 알려줘", "메모 현황 알려줘" — 이름을 지정하지 않으면 모든 저장소를 합산해서 답변
+- **자유 대화**: 정해진 명령이 아닌 인사·잡담·일반 질문도 Claude CLI가 실제로 답변을 생성해서 자연스럽게 응답 (환경설정에서 켜고 끌 수 있음, CLI 없으면 고정 키워드 인식으로 자동 대체)
+- **음성 엔진 선택**: 기본은 Apple 내장 음성(Speech/AVSpeechSynthesizer, 무료·온디바이스). 로컬에 [MeloTTS](https://github.com/myshell-ai/MeloTTS)를 설치하면 완전 오프라인 로컬 엔진으로 전환 가능 (환경설정 → 음성 어시스턴트)
+- **보이스 · 말하기 속도 커스텀**: 설치된 한국어 보이스 중 선택(Enhanced 보이스 우선 자동 선택 지원) 및 속도 슬라이더 제공, 미리 듣기 지원
+- 마이크·음성 인식 권한이 필요하며, 최초 사용 시 시스템 권한 요청이 표시됩니다
+
 ### 부가 기능
 - **macOS 네이티브 연동**: 방치 기준일을 넘긴 저장소 수를 Dock 아이콘 뱃지로 표시, 방치 발생 시 시스템 배너 알림
 - **메뉴바 위젯**: 메인 창을 열지 않고도 메뉴바에서 방치 현황 확인과 빠른 메모 추가 가능
@@ -63,25 +72,32 @@ Sources/Fleet/
 │   │   ├── MemoItem.swift             # 메모 엔티티
 │   │   ├── StaleStatus.swift          # 방치 상태 및 D+day 뱃지 계산
 │   │   ├── AppSettings.swift          # 앱 환경설정 엔티티
-│   │   └── AppLanguage.swift          # 표시 언어 엔티티 (System/ko/en/ja/zh-Hans)
+│   │   ├── AppLanguage.swift          # 표시 언어 엔티티 (System/ko/en/ja/zh-Hans)
+│   │   ├── VoiceIntent.swift          # 음성 명령 의도 (briefing/openRepository/conversation 등)
+│   │   └── SpeechVoiceOption.swift    # 선택 가능한 TTS 보이스 옵션
 │   ├── Repositories/                  # 프로토콜 인터페이스 (경계, Data가 구현)
 │   │   ├── GitHubRepositoryProtocol.swift
 │   │   ├── MemoRepositoryProtocol.swift
 │   │   ├── SettingsRepositoryProtocol.swift
 │   │   ├── LocalPathRepositoryProtocol.swift
-│   │   └── TerminalExecutionServiceProtocol.swift
+│   │   ├── TerminalExecutionServiceProtocol.swift
+│   │   ├── SpeechRecognitionServiceProtocol.swift
+│   │   ├── SpeechSynthesisServiceProtocol.swift
+│   │   └── VoiceIntentClassifierServiceProtocol.swift
 │   └── UseCases/                      # 유스케이스 (프로토콜만 주입받는 순수 로직)
 │       ├── FetchRepositoriesUseCase.swift
 │       ├── CalculateStaleStatusUseCase.swift
 │       ├── ManageMemoUseCase.swift
 │       ├── ExecuteAgentTaskUseCase.swift
 │       ├── UpdateDockBadgeUseCase.swift
-│       └── ScheduleNotificationUseCase.swift
+│       ├── ScheduleNotificationUseCase.swift
+│       └── ManageVoiceCommandUseCase.swift  # 음성 의도 파싱 및 응답 문장 조립
 ├── Data/                              # 통신 및 영속성 구현체 (Domain 프로토콜을 구현)
 │   ├── DataSources/
 │   │   ├── GitHub/ (GitHubAPIService, GitHubDTOs)
 │   │   ├── Persistence/ (LocalMemoStorage Actor)
-│   │   └── System/ (DockBadgeManager, NotificationManager, TerminalExecutionService)
+│   │   ├── System/ (DockBadgeManager, NotificationManager, TerminalExecutionService)
+│   │   └── Voice/ (SpeechRecognitionService, SpeechSynthesisService, MeloTTSSpeechSynthesisService, ClaudeVoiceIntentClassifierService)
 │   └── Repositories/
 │       ├── GitHubRepositoryImpl.swift
 │       ├── MemoRepositoryImpl.swift
@@ -93,7 +109,8 @@ Sources/Fleet/
 │   │   ├── RepositoryDetailViewModel.swift
 │   │   ├── MenuBarViewModel.swift      # 메뉴바 팝오버 전용 상태/로직 (View에서 UseCase 직접 호출 금지)
 │   │   ├── SettingsViewModel.swift
-│   │   └── TerminalSessionManager.swift
+│   │   ├── TerminalSessionManager.swift
+│   │   └── VoiceAssistantViewModel.swift  # 듣기/응답 상태, 의도 해석, TTS 호출 오케스트레이션
 │   ├── Theme/ (AppTheme — 색상/스프링 애니메이션/버튼 스타일 토큰)
 │   └── Views/
 │       ├── MainSplitView.swift        # 2단 Split Layout + 상단 내비게이션 바
@@ -102,12 +119,14 @@ Sources/Fleet/
 │       ├── Detail/ (RepositoryDetailView, MemoTimelineView, MemoDetailModalView, FileTreeSidebarView)
 │       ├── Dashboard/ (RepoHealthDashboardView, AgentWorkflowsView, CliEnvironmentsView)
 │       ├── Terminal/ (VSCodeTerminalPanelView)
+│       ├── Voice/ (VoiceAssistantOverlayView)
 │       └── Settings/ (SettingsView)
-└── Resources/                         # 다국어 리소스
+└── Resources/                         # 다국어 리소스 및 번들 스크립트
     ├── ko.lproj/Localizable.strings
     ├── en.lproj/Localizable.strings
     ├── ja.lproj/Localizable.strings
-    └── zh-Hans.lproj/Localizable.strings
+    ├── zh-Hans.lproj/Localizable.strings
+    └── melo_tts_server.py             # MeloTTS 로컬 합성 서버 (선택 설치 시 백그라운드로 실행)
 ```
 
 **의존성 규칙 (Dependency Rule) 검증**: `Presentation`과 `Data`는 오직 `Domain`의 Entity/UseCase/Protocol만 바라보며, 서로를 직접 참조하지 않습니다. Data 구현체(`GitHubRepositoryImpl` 등)는 `App/AppEnvironment.swift` 한 곳에서만 조립되어 주입되고, View는 절대 이를 직접 인스턴스화하지 않습니다.
