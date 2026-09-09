@@ -9,11 +9,12 @@
 
 > **GitHubリポジトリを最終コミット日で管理し、次にやることをメモしておき、そのままいつも使っているAIエージェントに任せられるmacOSネイティブアプリ**
 
-Fleetがすることは3つだけです。
+Fleetがすることは大きく4つです。
 
 1. **最終コミット日でリポジトリを管理** — GitHubのすべてのリポジトリを取得し、最終コミットからの経過日数（`D+XX`）を追跡して、放置期間が長い順に一覧表示します。
 2. **次にやることをメモ** — リポジトリごとに「次に直すこと・追加すること」をメモ（バックログ）として残します。
 3. **AIにそのまま任せる** — メモをクリックすると、すでに使っているAIエージェントCLI（Claude Code、Codex、Aiderなど）がそのリポジトリのコンテキストでターミナル上ですぐに作業を開始します。
+4. **音声で聞いて指示する** — マイクボタン（`⌘⇧J`）一つで放置状況のブリーフィング、リポジトリを開く、メモ状況の確認などを話しかけるだけで処理し、決まったコマンド以外でも自由に話しかければAIが自然に答えます。
 
 <p align="center">
   <img src="docs/screenshot.png" width="900" alt="Fleetアプリのスクリーンショット" />
@@ -40,6 +41,14 @@ Fleetがすることは3つだけです。
 - ローカルリポジトリフォルダの自動検出、手動フォルダ連携にも対応
 - 作業が始まるとメモのステータスが`待機中`→`作業中 🚀`にリアルタイムで切り替わり、最終実行日時を記録
 
+### 4. 音声アシスタント（Voice Assistant）
+- **タップして話す**: メイン画面上部のマイクボタン、またはショートカット**`⌘⇧J`**でフルスクリーンオーバーレイを表示してすぐに話し始められ、約1.2秒の無音を検知すると自動的に聞き取りを終了
+- **音声コマンド**: 「ブリーフィングして」（全体の放置状況）、「〇〇リポジトリを開いて」、「状態を教えて」、「メモの状況を教えて」 — リポジトリ名を指定しなければ全リポジトリを合算して回答
+- **自由な会話**: 決まったコマンド以外の挨拶・雑談・一般的な質問にも、Claude CLIが実際に回答を生成して自然に応答（環境設定でオン／オフ可能、CLIがなければ固定キーワード認識に自動的に切り替え）
+- **音声エンジンの選択**: デフォルトはApple内蔵音声（Speech/AVSpeechSynthesizer、無料・オンデバイス）。ローカルに[MeloTTS](https://github.com/myshell-ai/MeloTTS)をインストールすれば完全オフラインのローカルエンジンに切り替え可能（環境設定 → 音声アシスタント）
+- **ボイス・話速のカスタマイズ**: インストール済みの韓国語ボイスから選択（Enhanced品質のボイスを優先自動選択）でき、速度スライダーとプレビュー再生にも対応
+- マイクおよび音声認識の権限が必要で、初回利用時にシステム権限のリクエストが表示されます
+
 ### 付加機能
 - **macOSネイティブ連携**: 放置基準日を超えたリポジトリ数をDockアイコンのバッジとして表示、放置発生時にシステムバナー通知
 - **メニューバーウィジェット**: メインウィンドウを開かなくても、メニューバーから放置状況の確認とクイックメモ追加が可能
@@ -63,25 +72,32 @@ Sources/Fleet/
 │   │   ├── MemoItem.swift             # メモエンティティ
 │   │   ├── StaleStatus.swift          # 放置ステータスとD+dayバッジの計算
 │   │   ├── AppSettings.swift          # アプリ環境設定エンティティ
-│   │   └── AppLanguage.swift          # 表示言語エンティティ（System/ko/en/ja/zh-Hans）
+│   │   ├── AppLanguage.swift          # 表示言語エンティティ（System/ko/en/ja/zh-Hans）
+│   │   ├── VoiceIntent.swift          # 音声コマンドの意図（briefing/openRepository/conversationなど）
+│   │   └── SpeechVoiceOption.swift    # 選択可能なTTSボイスオプション
 │   ├── Repositories/                  # プロトコルインターフェース（境界、Dataが実装）
 │   │   ├── GitHubRepositoryProtocol.swift
 │   │   ├── MemoRepositoryProtocol.swift
 │   │   ├── SettingsRepositoryProtocol.swift
 │   │   ├── LocalPathRepositoryProtocol.swift
-│   │   └── TerminalExecutionServiceProtocol.swift
+│   │   ├── TerminalExecutionServiceProtocol.swift
+│   │   ├── SpeechRecognitionServiceProtocol.swift
+│   │   ├── SpeechSynthesisServiceProtocol.swift
+│   │   └── VoiceIntentClassifierServiceProtocol.swift
 │   └── UseCases/                      # ユースケース（プロトコルのみを注入される純粋なロジック）
 │       ├── FetchRepositoriesUseCase.swift
 │       ├── CalculateStaleStatusUseCase.swift
 │       ├── ManageMemoUseCase.swift
 │       ├── ExecuteAgentTaskUseCase.swift
 │       ├── UpdateDockBadgeUseCase.swift
-│       └── ScheduleNotificationUseCase.swift
+│       ├── ScheduleNotificationUseCase.swift
+│       └── ManageVoiceCommandUseCase.swift  # 音声の意図解析と応答文の組み立て
 ├── Data/                              # 通信および永続化の実装（Domainのプロトコルを実装）
 │   ├── DataSources/
 │   │   ├── GitHub/ (GitHubAPIService, GitHubDTOs)
 │   │   ├── Persistence/ (LocalMemoStorage Actor)
-│   │   └── System/ (DockBadgeManager, NotificationManager, TerminalExecutionService)
+│   │   ├── System/ (DockBadgeManager, NotificationManager, TerminalExecutionService)
+│   │   └── Voice/ (SpeechRecognitionService, SpeechSynthesisService, MeloTTSSpeechSynthesisService, ClaudeVoiceIntentClassifierService)
 │   └── Repositories/
 │       ├── GitHubRepositoryImpl.swift
 │       ├── MemoRepositoryImpl.swift
@@ -93,7 +109,8 @@ Sources/Fleet/
 │   │   ├── RepositoryDetailViewModel.swift
 │   │   ├── MenuBarViewModel.swift      # メニューバーポップオーバー専用の状態／ロジック（Viewから直接UseCaseを呼び出さない）
 │   │   ├── SettingsViewModel.swift
-│   │   └── TerminalSessionManager.swift
+│   │   ├── TerminalSessionManager.swift
+│   │   └── VoiceAssistantViewModel.swift  # 聞き取り／応答の状態、意図解決、TTS呼び出しのオーケストレーション
 │   ├── Theme/ (AppTheme — 色／スプリングアニメーション／ボタンスタイルのトークン)
 │   └── Views/
 │       ├── MainSplitView.swift        # 2ペインスプリットレイアウト＋上部ナビゲーションバー
@@ -102,12 +119,14 @@ Sources/Fleet/
 │       ├── Detail/ (RepositoryDetailView, MemoTimelineView, MemoDetailModalView, FileTreeSidebarView)
 │       ├── Dashboard/ (RepoHealthDashboardView, AgentWorkflowsView, CliEnvironmentsView)
 │       ├── Terminal/ (VSCodeTerminalPanelView)
+│       ├── Voice/ (VoiceAssistantOverlayView)
 │       └── Settings/ (SettingsView)
-└── Resources/                         # 多言語リソース
+└── Resources/                         # 多言語リソースおよびバンドルスクリプト
     ├── ko.lproj/Localizable.strings
     ├── en.lproj/Localizable.strings
     ├── ja.lproj/Localizable.strings
-    └── zh-Hans.lproj/Localizable.strings
+    ├── zh-Hans.lproj/Localizable.strings
+    └── melo_tts_server.py             # MeloTTSローカル合成サーバー（インストール時にバックグラウンドで実行）
 ```
 
 **依存関係ルール（Dependency Rule）の検証**: `Presentation`と`Data`は、`Domain`のEntity／UseCase／Protocolのみを参照し、互いを直接参照することはありません。Data実装（`GitHubRepositoryImpl`など）は`App/AppEnvironment.swift`の1か所でのみ組み立てられて注入され、Viewがこれを直接インスタンス化することはありません。

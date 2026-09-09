@@ -9,11 +9,12 @@
 
 > **一款按最后提交日期管理你的 GitHub 仓库、记录接下来要做的事、并直接交给你正在使用的 AI 智能体去完成的原生 macOS 应用**
 
-Fleet 只做三件事。
+Fleet 主要做四件事。
 
 1. **按最后提交日期管理仓库** — 拉取你所有的 GitHub 仓库，追踪自最后一次提交以来经过的天数（`D+XX`），并优先显示闲置最久的仓库。
 2. **记下接下来要做的事** — 为每个仓库记录一条备忘（待办事项），写下接下来要修复或开发的内容。
 3. **直接交给 AI 去做** — 点击一条备忘，你已经在用的 AI 智能体 CLI（Claude Code、Codex、Aider 等）就会在终端里针对该仓库直接开始工作。
+4. **用语音提问和下达指令** — 只需轻点麦克风按钮（`⌘⇧J`）就能用语音获取闲置情况简报、打开仓库、查询备忘状态，即便不是这些固定指令，随意说话也会得到 AI 自然生成的回应。
 
 <p align="center">
   <img src="docs/screenshot.png" width="900" alt="Fleet 应用截图" />
@@ -40,6 +41,14 @@ Fleet 只做三件事。
 - 支持自动检测本地仓库文件夹，也可手动关联文件夹
 - 任务一旦开始，备忘状态会实时从`待处理`切换为`进行中 🚀`，并记录最近一次执行时间
 
+### 4. 语音助手（Voice Assistant）
+- **轻点说话**：点击主窗口顶部的麦克风按钮，或使用快捷键 **`⌘⇧J`** 打开全屏覆盖层即可立即开始说话，检测到约 1.2 秒静音后会自动停止聆听
+- **语音指令**："给我简报"（整体闲置情况）、"打开 OO 仓库"、"告诉我状态"、"备忘状况怎么样" — 不指定仓库名称时会汇总所有仓库
+- **自由对话**：不属于上述指令的问候、闲聊、一般性问题，都会由 Claude CLI 实际生成回答并自然作答（可在偏好设置中开关；未安装 CLI 时自动回退为固定关键词识别）
+- **语音引擎可选**：默认使用 Apple 内置语音（Speech/AVSpeechSynthesizer，免费且在设备端运行）。在本地安装 [MeloTTS](https://github.com/myshell-ai/MeloTTS) 后可切换为完全离线的本地引擎（偏好设置 → 语音助手）
+- **自定义音色与语速**：可从已安装的韩语音色中选择（优先自动选用 Enhanced 高音质），并通过滑块调整语速、试听效果
+- 需要麦克风和语音识别权限，首次使用时会弹出系统权限请求
+
 ### 附加功能
 - **原生 macOS 集成**：将超过闲置阈值的仓库数量以程序坞图标角标显示，出现闲置仓库时发送系统横幅通知
 - **菜单栏小组件**：无需打开主窗口，即可在菜单栏查看闲置情况并快速添加备忘
@@ -63,25 +72,32 @@ Sources/Fleet/
 │   │   ├── MemoItem.swift             # 备忘实体
 │   │   ├── StaleStatus.swift          # 闲置状态与 D+day 角标计算
 │   │   ├── AppSettings.swift          # 应用设置实体
-│   │   └── AppLanguage.swift          # 显示语言实体（System/ko/en/ja/zh-Hans）
+│   │   ├── AppLanguage.swift          # 显示语言实体（System/ko/en/ja/zh-Hans）
+│   │   ├── VoiceIntent.swift          # 语音指令意图（briefing/openRepository/conversation 等）
+│   │   └── SpeechVoiceOption.swift    # 可选的 TTS 音色选项
 │   ├── Repositories/                  # 协议接口（边界，由 Data 层实现）
 │   │   ├── GitHubRepositoryProtocol.swift
 │   │   ├── MemoRepositoryProtocol.swift
 │   │   ├── SettingsRepositoryProtocol.swift
 │   │   ├── LocalPathRepositoryProtocol.swift
-│   │   └── TerminalExecutionServiceProtocol.swift
+│   │   ├── TerminalExecutionServiceProtocol.swift
+│   │   ├── SpeechRecognitionServiceProtocol.swift
+│   │   ├── SpeechSynthesisServiceProtocol.swift
+│   │   └── VoiceIntentClassifierServiceProtocol.swift
 │   └── UseCases/                      # 用例（仅依赖协议的纯逻辑）
 │       ├── FetchRepositoriesUseCase.swift
 │       ├── CalculateStaleStatusUseCase.swift
 │       ├── ManageMemoUseCase.swift
 │       ├── ExecuteAgentTaskUseCase.swift
 │       ├── UpdateDockBadgeUseCase.swift
-│       └── ScheduleNotificationUseCase.swift
+│       ├── ScheduleNotificationUseCase.swift
+│       └── ManageVoiceCommandUseCase.swift  # 解析语音意图并组装回应文本
 ├── Data/                              # 网络与持久化实现（实现 Domain 层协议）
 │   ├── DataSources/
 │   │   ├── GitHub/ (GitHubAPIService, GitHubDTOs)
 │   │   ├── Persistence/ (LocalMemoStorage Actor)
-│   │   └── System/ (DockBadgeManager, NotificationManager, TerminalExecutionService)
+│   │   ├── System/ (DockBadgeManager, NotificationManager, TerminalExecutionService)
+│   │   └── Voice/ (SpeechRecognitionService, SpeechSynthesisService, MeloTTSSpeechSynthesisService, ClaudeVoiceIntentClassifierService)
 │   └── Repositories/
 │       ├── GitHubRepositoryImpl.swift
 │       ├── MemoRepositoryImpl.swift
@@ -93,7 +109,8 @@ Sources/Fleet/
 │   │   ├── RepositoryDetailViewModel.swift
 │   │   ├── MenuBarViewModel.swift      # 菜单栏弹出面板专用的状态/逻辑（View 禁止直接调用 UseCase）
 │   │   ├── SettingsViewModel.swift
-│   │   └── TerminalSessionManager.swift
+│   │   ├── TerminalSessionManager.swift
+│   │   └── VoiceAssistantViewModel.swift  # 聆听/回应状态、意图解析、TTS 调用编排
 │   ├── Theme/ (AppTheme — 颜色/弹簧动画/按钮样式令牌)
 │   └── Views/
 │       ├── MainSplitView.swift        # 双栏分割布局 + 顶部导航栏
@@ -102,12 +119,14 @@ Sources/Fleet/
 │       ├── Detail/ (RepositoryDetailView, MemoTimelineView, MemoDetailModalView, FileTreeSidebarView)
 │       ├── Dashboard/ (RepoHealthDashboardView, AgentWorkflowsView, CliEnvironmentsView)
 │       ├── Terminal/ (VSCodeTerminalPanelView)
+│       ├── Voice/ (VoiceAssistantOverlayView)
 │       └── Settings/ (SettingsView)
-└── Resources/                         # 多语言资源
+└── Resources/                         # 多语言资源与内置脚本
     ├── ko.lproj/Localizable.strings
     ├── en.lproj/Localizable.strings
     ├── ja.lproj/Localizable.strings
-    └── zh-Hans.lproj/Localizable.strings
+    ├── zh-Hans.lproj/Localizable.strings
+    └── melo_tts_server.py             # MeloTTS 本地合成服务器（安装后在后台运行）
 ```
 
 **依赖规则（Dependency Rule）验证**：`Presentation` 层与 `Data` 层仅引用 `Domain` 层的实体/用例/协议，彼此之间从不直接引用。Data 层的具体实现（如 `GitHubRepositoryImpl`）只在 `App/AppEnvironment.swift` 这一处被组装并注入，View 绝不会直接实例化它们。
