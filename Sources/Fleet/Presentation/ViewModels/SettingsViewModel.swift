@@ -87,7 +87,7 @@ public final class SettingsViewModel: ObservableObject {
 
     public func previewVoice() {
         environment.speechSynthesisService(for: settings).speak(
-            "안녕하세요, 자비스입니다. 이렇게 안내해 드릴게요.",
+            "안녕하세요, Fleet입니다. 이렇게 안내해 드릴게요.",
             voiceIdentifier: settings.voiceIdentifier,
             rate: settings.voiceSpeechRate
         ) { }

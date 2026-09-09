@@ -451,7 +451,7 @@ public struct SettingsView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "mic.fill")
                         .foregroundColor(.accentColor)
-                    Text("Jarvis 음성 어시스턴트")
+                    Text("Fleet 음성 어시스턴트")
                         .font(.system(.subheadline, design: .rounded))
                         .fontWeight(.bold)
                 }

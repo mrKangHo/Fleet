@@ -19,7 +19,7 @@ public struct VoiceAssistantOverlayView: View {
             VStack(spacing: 28) {
                 Spacer()
 
-                Text("JARVIS")
+                Text("FLEET")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .tracking(4)
                     .foregroundColor(.accentColor.opacity(0.8))
@@ -35,7 +35,7 @@ public struct VoiceAssistantOverlayView: View {
                         exchangeRow(label: "나", text: viewModel.transcript, color: .secondary)
                     }
                     if !viewModel.responseText.isEmpty {
-                        exchangeRow(label: "Jarvis", text: viewModel.responseText, color: .accentColor)
+                        exchangeRow(label: "Fleet", text: viewModel.responseText, color: .accentColor)
                     }
                 }
                 .frame(maxWidth: 520, alignment: .leading)
