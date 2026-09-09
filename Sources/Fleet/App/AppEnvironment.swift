@@ -16,6 +16,8 @@ public final class AppEnvironment: Sendable {
     public let notificationService: SystemNotificationServiceProtocol
     public let terminalExecutionService: TerminalExecutionServiceProtocol
     public let terminalSessionManager: TerminalSessionManager
+    public let speechRecognitionService: SpeechRecognitionServiceProtocol
+    public let speechSynthesisService: SpeechSynthesisServiceProtocol
 
     // MARK: - Use Cases
     public let fetchRepositoriesUseCase: FetchRepositoriesUseCase
@@ -26,6 +28,7 @@ public final class AppEnvironment: Sendable {
     public let executeAgentTaskUseCase: ExecuteAgentTaskUseCase
     public let manageRepositoryUseCase: ManageRepositoryUseCase
     public let manageRepositoryGuidelineUseCase: ManageRepositoryGuidelineUseCase
+    public let manageVoiceCommandUseCase: ManageVoiceCommandUseCase
 
     public init(
         githubRepository: GitHubRepositoryProtocol = GitHubRepositoryImpl(),
@@ -36,7 +39,9 @@ public final class AppEnvironment: Sendable {
         dockBadgeService: DockBadgeServiceProtocol = DockBadgeManager(),
         notificationService: SystemNotificationServiceProtocol = NotificationManager(),
         terminalExecutionService: TerminalExecutionServiceProtocol = TerminalExecutionService(),
-        terminalSessionManager: TerminalSessionManager = .shared
+        terminalSessionManager: TerminalSessionManager = .shared,
+        speechRecognitionService: SpeechRecognitionServiceProtocol = SpeechRecognitionService(),
+        speechSynthesisService: SpeechSynthesisServiceProtocol = SpeechSynthesisService()
     ) {
         self.githubRepository = githubRepository
         self.memoRepository = memoRepository
@@ -47,6 +52,8 @@ public final class AppEnvironment: Sendable {
         self.notificationService = notificationService
         self.terminalExecutionService = terminalExecutionService
         self.terminalSessionManager = terminalSessionManager
+        self.speechRecognitionService = speechRecognitionService
+        self.speechSynthesisService = speechSynthesisService
 
         let initialSettings = settingsRepository.loadSettings()
         terminalSessionManager.currentProfile = initialSettings.terminalApp
@@ -79,5 +86,6 @@ public final class AppEnvironment: Sendable {
         self.manageRepositoryGuidelineUseCase = ManageRepositoryGuidelineUseCase(
             guidelineRepository: repositoryGuidelineRepository
         )
+        self.manageVoiceCommandUseCase = ManageVoiceCommandUseCase()
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 public struct MainSplitView: View {
     @StateObject private var listViewModel: RepositoryListViewModel
     @StateObject private var detailViewModel: RepositoryDetailViewModel
+    @StateObject private var voiceViewModel: VoiceAssistantViewModel
     @State private var isSettingsPresented = false
 
     public enum NavigationTab: String, CaseIterable, Identifiable {
@@ -33,8 +34,15 @@ public struct MainSplitView: View {
     }
 
     public init(environment: AppEnvironment = .shared) {
-        self._listViewModel = StateObject(wrappedValue: RepositoryListViewModel(environment: environment))
-        self._detailViewModel = StateObject(wrappedValue: RepositoryDetailViewModel(environment: environment))
+        let list = RepositoryListViewModel(environment: environment)
+        let detail = RepositoryDetailViewModel(environment: environment)
+        self._listViewModel = StateObject(wrappedValue: list)
+        self._detailViewModel = StateObject(wrappedValue: detail)
+        self._voiceViewModel = StateObject(wrappedValue: VoiceAssistantViewModel(
+            environment: environment,
+            listViewModel: list,
+            detailViewModel: detail
+        ))
     }
 
     public var body: some View {
@@ -82,6 +90,10 @@ public struct MainSplitView: View {
             RepositoryGuidelineSettingsView(viewModel: detailViewModel)
                 .environment(\.locale, appLocale)
         }
+        .sheet(isPresented: $voiceViewModel.isOverlayPresented) {
+            VoiceAssistantOverlayView(viewModel: voiceViewModel)
+                .environment(\.locale, appLocale)
+        }
         .onChange(of: listViewModel.selectedRepositoryId) { _, newId in
             if let newId = newId,
                let repo = listViewModel.repositories.first(where: { $0.id == newId }) {
@@ -124,6 +136,8 @@ public struct MainSplitView: View {
             }
 
             Spacer()
+
+            voiceAssistantButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -149,6 +163,17 @@ public struct MainSplitView: View {
         .padding(3)
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.7))
         .clipShape(Capsule())
+    }
+
+    private var voiceAssistantButton: some View {
+        Button(action: { voiceViewModel.toggleListening() }) {
+            Image(systemName: "mic.fill")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .buttonStyle(.plain)
+        .help("음성으로 물어보기 (⌘⇧J)")
+        .keyboardShortcut("j", modifiers: [.command, .shift])
     }
 
     private var viewModePicker: some View {
