@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// 음성 명령 오버레이 — 상태(대기/듣는 중/생각 중/응답 중)와 실시간 트랜스크립트/응답을 보여준다
+/// 음성 명령 전체화면 오버레이 — 앱 창 전체를 덮는 HUD 스타일 음성 인터페이스
 public struct VoiceAssistantOverlayView: View {
     @ObservedObject var viewModel: VoiceAssistantViewModel
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isPulsing = false
 
@@ -12,88 +11,114 @@ public struct VoiceAssistantOverlayView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 20) {
-            HStack {
-                Text("Jarvis")
-                    .font(.system(.title3, design: .rounded))
-                    .fontWeight(.bold)
+        ZStack {
+            Color.black.opacity(0.78)
+                .ignoresSafeArea()
+                .onTapGesture { viewModel.dismissOverlay() }
+
+            VStack(spacing: 28) {
                 Spacer()
-                Button("닫기") {
-                    viewModel.dismissOverlay()
-                    dismiss()
-                }
-            }
 
-            micButton
+                Text("JARVIS")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .tracking(4)
+                    .foregroundColor(.accentColor.opacity(0.8))
 
-            Text(statusLabel)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.secondary)
+                micButton
 
-            VStack(alignment: .leading, spacing: 10) {
-                if !viewModel.transcript.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("나")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.secondary)
-                        Text(viewModel.transcript)
-                            .font(.system(size: 14))
+                Text(statusLabel)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.secondary)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    if !viewModel.transcript.isEmpty {
+                        exchangeRow(label: "나", text: viewModel.transcript, color: .secondary)
+                    }
+                    if !viewModel.responseText.isEmpty {
+                        exchangeRow(label: "Jarvis", text: viewModel.responseText, color: .accentColor)
                     }
                 }
+                .frame(maxWidth: 520, alignment: .leading)
+                .padding(20)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .opacity(viewModel.transcript.isEmpty && viewModel.responseText.isEmpty ? 0 : 1)
+                .frame(minHeight: 90)
 
-                if !viewModel.responseText.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Jarvis")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.accentColor)
-                        Text(viewModel.responseText)
-                            .font(.system(size: 14))
-                    }
+                if case .error(let message) = viewModel.state {
+                    Text(message)
+                        .font(.callout)
+                        .foregroundColor(AppTheme.staleRose)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 480)
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(AppTheme.stitchContainerLowest)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .frame(minHeight: 80)
 
-            if case .error(let message) = viewModel.state {
-                Text(message)
-                    .font(.caption)
-                    .foregroundColor(AppTheme.staleRose)
-            }
+                Spacer()
 
-            Text("\"브리핑해줘\", \"OO 저장소 열어줘\", \"상태 알려줘\", \"메모 현황 알려줘\"")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
+                VStack(spacing: 10) {
+                    Text("\"브리핑해줘\" · \"OO 저장소 열어줘\" · \"상태 알려줘\" · \"메모 현황 알려줘\"")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+
+                    Button("닫기 (Esc)") { viewModel.dismissOverlay() }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.bottom, 36)
+            }
         }
-        .padding(20)
-        .frame(width: 380)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onExitCommand { viewModel.dismissOverlay() }
         .onChange(of: viewModel.state) { _, newValue in
             isPulsing = (newValue == .listening)
         }
+    }
+
+    private func exchangeRow(label: String, text: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(color)
+            Text(text)
+                .font(.system(size: 17))
+                .foregroundColor(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var micButton: some View {
         Button(action: { viewModel.toggleListening() }) {
             ZStack {
                 Circle()
-                    .fill(micColor.opacity(0.15))
-                    .frame(width: 84, height: 84)
-                    .scaleEffect(isPulsing && !reduceMotion ? 1.15 : 1.0)
+                    .stroke(micColor.opacity(0.25), lineWidth: 1.5)
+                    .frame(width: 168, height: 168)
+                    .scaleEffect(isPulsing && !reduceMotion ? 1.18 : 1.0)
+                    .opacity(isPulsing && !reduceMotion ? 0 : 1)
                     .animation(
                         isPulsing && !reduceMotion
-                            ? .easeInOut(duration: 0.8).repeatForever(autoreverses: true)
+                            ? .easeOut(duration: 1.4).repeatForever(autoreverses: false)
                             : .default,
                         value: isPulsing
                     )
 
                 Circle()
-                    .fill(micColor.opacity(0.25))
-                    .frame(width: 64, height: 64)
+                    .fill(micColor.opacity(0.12))
+                    .frame(width: 132, height: 132)
+                    .scaleEffect(isPulsing && !reduceMotion ? 1.1 : 1.0)
+                    .animation(
+                        isPulsing && !reduceMotion
+                            ? .easeInOut(duration: 0.9).repeatForever(autoreverses: true)
+                            : .default,
+                        value: isPulsing
+                    )
+
+                Circle()
+                    .fill(micColor.opacity(0.22))
+                    .frame(width: 100, height: 100)
 
                 Image(systemName: micIconName)
-                    .font(.system(size: 26))
+                    .font(.system(size: 36))
                     .foregroundColor(micColor)
             }
         }

@@ -46,24 +46,35 @@ public struct MainSplitView: View {
     }
 
     public var body: some View {
-        NavigationSplitView {
-            SidebarView(
-                viewModel: listViewModel,
-                isSettingsPresented: $isSettingsPresented
-            )
-            .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
-        } detail: {
-            VStack(spacing: 0) {
-                topNavigationBar
-                Divider()
-                    .overlay(AppTheme.stitchBorder)
-                selectedTabContent
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(AppTheme.stitchBackground)
+        ZStack {
+            NavigationSplitView {
+                SidebarView(
+                    viewModel: listViewModel,
+                    isSettingsPresented: $isSettingsPresented
+                )
+                .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
+            } detail: {
+                VStack(spacing: 0) {
+                    topNavigationBar
+                    Divider()
+                        .overlay(AppTheme.stitchBorder)
+                    selectedTabContent
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(AppTheme.stitchBackground)
+                }
+                .navigationTitle(detailViewModel.repository?.name ?? "Fleet")
+                .background(AppTheme.stitchBackground)
             }
-            .navigationTitle(detailViewModel.repository?.name ?? "Fleet")
-            .background(AppTheme.stitchBackground)
+            .allowsHitTesting(!voiceViewModel.isOverlayPresented)
+
+            if voiceViewModel.isOverlayPresented {
+                VoiceAssistantOverlayView(viewModel: voiceViewModel)
+                    .environment(\.locale, appLocale)
+                    .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                    .zIndex(1)
+            }
         }
+        .animation(.easeOut(duration: 0.22), value: voiceViewModel.isOverlayPresented)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView {
@@ -88,10 +99,6 @@ public struct MainSplitView: View {
         }
         .sheet(isPresented: $detailViewModel.isGuidelineSheetPresented) {
             RepositoryGuidelineSettingsView(viewModel: detailViewModel)
-                .environment(\.locale, appLocale)
-        }
-        .sheet(isPresented: $voiceViewModel.isOverlayPresented) {
-            VoiceAssistantOverlayView(viewModel: voiceViewModel)
                 .environment(\.locale, appLocale)
         }
         .onChange(of: listViewModel.selectedRepositoryId) { _, newId in
