@@ -7,5 +7,7 @@ public enum VoiceIntent: Equatable, Sendable {
     case repositoryStatus(name: String?)
     case memoSummary(name: String?)
     case help
+    /// Fleet의 정해진 명령에 해당하지 않는 일반 대화·질문. reply는 AI가 생성한 자비스의 답변.
+    case conversation(reply: String)
     case unrecognized(raw: String)
 }

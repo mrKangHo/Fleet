@@ -72,27 +72,31 @@ public final class ClaudeVoiceIntentClassifierService: VoiceIntentClassifierServ
     private static func buildPrompt(text: String, repositoryNames: [String]) -> String {
         let repoList = repositoryNames.isEmpty ? "(없음)" : repositoryNames.joined(separator: ", ")
         return """
-        당신은 macOS 앱 "Fleet"의 음성 명령 분류기입니다. Fleet는 GitHub 저장소를 추적하고 메모를 남기는 앱입니다.
-        도구를 사용하지 말고, 아래 발화의 의도만 분류해서 다른 설명 없이 JSON 한 줄만 출력하세요.
+        당신은 macOS 앱 "Fleet" 안에서 동작하는 음성 비서 "자비스"입니다. Fleet는 GitHub 저장소를 추적하고 메모를 남기는 앱입니다.
+        도구를 사용하지 말고, 아래 발화를 보고 다른 설명 없이 JSON 한 줄만 출력하세요.
 
         현재 관리 중인 저장소 목록: \(repoList)
         사용자 발화: "\(text)"
 
-        분류 가능한 intent:
+        먼저 발화가 Fleet 앱 명령에 해당하는지 판단하세요. 해당하면 아래 intent 중 하나로 분류합니다:
         - briefing: 전체 저장소 방치 현황 브리핑 요청
         - open_repository: 특정 저장소를 열어달라는 요청 (name에 저장소 목록 중 정확히 일치하는 이름)
         - repository_status: 특정 저장소 또는 현재 열려있는 저장소의 상태 조회
         - memo_summary: 메모 현황/개수 조회
-        - help: 사용법 안내 요청
-        - unrecognized: 위 어디에도 해당하지 않음
+        - help: Fleet 사용법 안내 요청
 
-        출력 형식(JSON만, 다른 텍스트 금지): {"intent": "<intent>", "name": <저장소 이름 문자열 또는 null>}
+        Fleet 명령이 아니라 인사, 잡담, 일반 지식 질문 등 자유로운 대화이면 intent를 "conversation"으로 하고,
+        reply 필드에 자비스의 말투로 자연스럽고 간결한 한국어 답변을 1~3문장으로 작성하세요 (마크다운 금지, 순수 텍스트).
+
+        출력 형식(JSON만, 다른 텍스트 금지):
+        {"intent": "<intent>", "name": <저장소 이름 문자열 또는 null>, "reply": <conversation일 때만 답변 문자열, 그 외 null>}
         """
     }
 
     private struct ClassificationResult: Decodable {
         let intent: String
         let name: String?
+        let reply: String?
     }
 
     private static func parseIntent(from output: String, fallbackRaw: String) -> VoiceIntent? {
@@ -119,6 +123,11 @@ public final class ClaudeVoiceIntentClassifierService: VoiceIntentClassifierServ
             return .memoSummary(name: result.name)
         case "help":
             return .help
+        case "conversation":
+            guard let reply = result.reply, !reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return .unrecognized(raw: fallbackRaw)
+            }
+            return .conversation(reply: reply)
         default:
             return .unrecognized(raw: fallbackRaw)
         }

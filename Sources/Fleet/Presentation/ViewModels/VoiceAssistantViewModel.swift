@@ -135,6 +135,9 @@ public final class VoiceAssistantViewModel: ObservableObject {
         case .help:
             return useCase.helpText()
 
+        case .conversation(let reply):
+            return reply
+
         case .unrecognized:
             return "죄송해요, 이해하지 못했습니다. " + useCase.helpText()
         }

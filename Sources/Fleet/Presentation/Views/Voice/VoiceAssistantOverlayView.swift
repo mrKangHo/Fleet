@@ -56,7 +56,7 @@ public struct VoiceAssistantOverlayView: View {
                 Spacer()
 
                 VStack(spacing: 10) {
-                    Text("\"브리핑해줘\" · \"OO 저장소 열어줘\" · \"상태 알려줘\" · \"메모 현황 알려줘\"")
+                    Text("\"브리핑해줘\" · \"OO 저장소 열어줘\" 같은 명령이나, 그냥 편하게 말을 걸어도 돼요")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
 
